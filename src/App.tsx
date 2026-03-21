@@ -12,6 +12,8 @@ import {
   AlertTriangle,
   Plus,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Activity,
   ShieldCheck,
   Trophy,
@@ -43,6 +45,7 @@ const MOCK_CHECKLIST: Checklist = {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'checklists' | 'targets' | 'settings'>('dashboard');
+  const [isAdmin, setIsAdmin] = useState(false);
   const [targets, setTargets] = useState<Target[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<Target | null>(null);
@@ -169,7 +172,7 @@ export default function App() {
             <Shield className="w-6 h-6 text-white" />
           </div>
           <h1 className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
-            RobotSec AI
+            Humanoid-Sec AI
           </h1>
         </div>
         
@@ -252,10 +255,23 @@ export default function App() {
               )}
               {activeTab === 'checklists' && (
                 selectedChecklist 
-                  ? <ChecklistView checklist={selectedChecklist} onBack={() => setSelectedChecklist(null)} />
+                  ? <ChecklistView 
+                      checklist={selectedChecklist} 
+                      onBack={() => setSelectedChecklist(null)} 
+                      isAdmin={isAdmin}
+                      onEdit={(cl) => {
+                        setNewChecklist(cl);
+                        setShowAddChecklistModal(true);
+                      }}
+                    />
                   : <ChecklistsListView 
                       checklists={checklists} 
                       onSelect={setSelectedChecklist} 
+                      isAdmin={isAdmin}
+                      onEdit={(cl) => {
+                        setNewChecklist(cl);
+                        setShowAddChecklistModal(true);
+                      }}
                       onCreate={() => {
                         setNewChecklist({
                           id: `cl-${Date.now()}`,
@@ -280,7 +296,7 @@ export default function App() {
                     />
                   : <TargetsListView targets={filteredTargets} onSelect={setSelectedTarget} />
               )}
-              {activeTab === 'settings' && <SettingsView />}
+              {activeTab === 'settings' && <SettingsView isAdmin={isAdmin} setIsAdmin={setIsAdmin} />}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -416,7 +432,7 @@ export default function App() {
                     <button 
                       onClick={() => setNewChecklist({
                         ...newChecklist,
-                        items: [...newChecklist.items, { id: `i${newChecklist.items.length + 1}`, text: '', category: 'Software', weight: 3 }]
+                        items: [...newChecklist.items, { id: `i${Date.now()}`, text: '', category: 'Software', weight: 3 }]
                       })}
                       className="text-indigo-600 text-xs font-bold flex items-center gap-1 hover:underline"
                     >
@@ -451,6 +467,19 @@ export default function App() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Detailed Requirements</label>
+                        <textarea 
+                          value={item.description || ''}
+                          onChange={(e) => {
+                            const newItems = [...newChecklist.items];
+                            newItems[idx].description = e.target.value;
+                            setNewChecklist({ ...newChecklist, items: newItems });
+                          }}
+                          placeholder="Technical details..."
+                          className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 h-16 resize-none"
+                        />
+                      </div>
                       <div className="flex items-center gap-4">
                         <div className="flex-1">
                           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label>
@@ -467,6 +496,11 @@ export default function App() {
                             <option value="Physical">Physical</option>
                             <option value="Software">Software</option>
                             <option value="Access Control">Access Control</option>
+                            <option value="System Security">System Security</option>
+                            <option value="OS Hardening">OS Hardening</option>
+                            <option value="Cloud Communication">Cloud Communication</option>
+                            <option value="Local Network">Local Network</option>
+                            <option value="Audit Logging">Audit Logging</option>
                           </select>
                         </div>
                         <div className="w-24">
@@ -499,13 +533,21 @@ export default function App() {
                 <button 
                   onClick={async () => {
                     try {
-                      const res = await fetch('/api/checklists', {
-                        method: 'POST',
+                      const isEdit = checklists.some(c => c.id === newChecklist.id);
+                      const res = await fetch(isEdit ? `/api/checklists/${newChecklist.id}` : '/api/checklists', {
+                        method: isEdit ? 'PUT' : 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(newChecklist)
                       });
                       if (res.ok) {
-                        setChecklists([...checklists, newChecklist]);
+                        if (isEdit) {
+                          setChecklists(checklists.map(c => c.id === newChecklist.id ? newChecklist : c));
+                          if (selectedChecklist?.id === newChecklist.id) {
+                            setSelectedChecklist(newChecklist);
+                          }
+                        } else {
+                          setChecklists([...checklists, newChecklist]);
+                        }
                         setShowAddChecklistModal(false);
                       }
                     } catch (e) {
@@ -514,7 +556,7 @@ export default function App() {
                   }}
                   className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-all"
                 >
-                  Save Checklist
+                  {checklists.some(c => c.id === newChecklist.id) ? 'Update Checklist' : 'Save Checklist'}
                 </button>
               </div>
             </motion.div>
@@ -594,13 +636,26 @@ function DashboardView({ targets, onSelectTarget, onViewAll }: { targets: Target
   );
 }
 
-function ChecklistView({ checklist, onBack }: { checklist: Checklist, onBack: () => void }) {
+function ChecklistView({ checklist, onBack, isAdmin, onEdit }: { checklist: Checklist, onBack: () => void, isAdmin: boolean, onEdit: (cl: Checklist) => void }) {
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <button onClick={onBack} className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
-        <ChevronRight className="w-4 h-4 rotate-180" />
-        Back to Checklists
-      </button>
+      <div className="flex items-center justify-between">
+        <button onClick={onBack} className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
+          <ChevronRight className="w-4 h-4 rotate-180" />
+          Back to Checklists
+        </button>
+        {isAdmin && (
+          <button 
+            onClick={() => onEdit(checklist)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+          >
+            <Settings className="w-4 h-4" />
+            Edit Checklist
+          </button>
+        )}
+      </div>
       <div className="glass-card p-10 rounded-3xl">
         <div className="flex items-center gap-4 mb-6">
           <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-100">
@@ -614,24 +669,42 @@ function ChecklistView({ checklist, onBack }: { checklist: Checklist, onBack: ()
         
         <div className="mt-10 space-y-4">
           {checklist.items.map((item, idx) => (
-            <div key={item.id} className="flex items-start gap-5 p-6 bg-white/40 rounded-2xl border border-white/60 hover:bg-white/60 transition-all group">
-              <span className="bg-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md group-hover:scale-110 transition-transform">
-                {idx + 1}
-              </span>
-              <div className="flex-1">
-                <p className="font-bold text-slate-800 text-lg">{item.text}</p>
-                <div className="flex items-center gap-4 mt-3">
-                  <span className="text-[10px] uppercase font-extrabold tracking-widest px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg">
-                    {item.category}
-                  </span>
-                  <div className="flex items-center gap-1.5">
-                    <Activity className="w-3 h-3 text-slate-400" />
-                    <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400">
-                      Impact Weight: {item.weight}
+            <div 
+              key={item.id} 
+              onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+              className="flex flex-col gap-2 p-6 bg-white/40 rounded-2xl border border-white/60 hover:bg-white/60 transition-all group cursor-pointer"
+            >
+              <div className="flex items-start gap-5">
+                <span className="bg-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md group-hover:scale-110 transition-transform">
+                  {idx + 1}
+                </span>
+                <div className="flex-1">
+                  <p className="font-bold text-slate-800 text-lg">{item.text}</p>
+                  <div className="flex items-center gap-4 mt-3">
+                    <span className="text-[10px] uppercase font-extrabold tracking-widest px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg">
+                      {item.category}
                     </span>
+                    <div className="flex items-center gap-1.5">
+                      <Activity className="w-3 h-3 text-slate-400" />
+                      <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400">
+                        Impact Weight: {item.weight}
+                      </span>
+                    </div>
                   </div>
                 </div>
+                <div className="flex-shrink-0 text-slate-300 group-hover:text-indigo-400 transition-colors">
+                  {expandedId === item.id ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
+                </div>
               </div>
+              {expandedId === item.id && item.description && (
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  className="mt-4 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 text-sm text-slate-600 leading-relaxed font-medium"
+                >
+                  {item.description}
+                </motion.div>
+              )}
             </div>
           ))}
         </div>
@@ -640,7 +713,7 @@ function ChecklistView({ checklist, onBack }: { checklist: Checklist, onBack: ()
   );
 }
 
-function ChecklistsListView({ checklists, onSelect, onCreate }: { checklists: Checklist[], onSelect: (cl: Checklist) => void, onCreate: () => void }) {
+function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin }: { checklists: Checklist[], onSelect: (cl: Checklist) => void, onCreate: () => void, onEdit: (cl: Checklist) => void, isAdmin: boolean }) {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -648,32 +721,36 @@ function ChecklistsListView({ checklists, onSelect, onCreate }: { checklists: Ch
           <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">Security Checklists</h3>
           <p className="text-slate-500 font-medium mt-1">Standardized security controls for different robot classes.</p>
         </div>
-        <button 
-          onClick={onCreate}
-          className="btn-primary px-6 py-3 rounded-2xl text-sm font-extrabold flex items-center gap-3"
-        >
-          <Plus className="w-5 h-5" />
-          New Checklist
-        </button>
+        {isAdmin && (
+          <button 
+            onClick={onCreate}
+            className="btn-primary px-6 py-3 rounded-2xl text-sm font-extrabold flex items-center gap-3"
+          >
+            <Plus className="w-5 h-5" />
+            New Checklist
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {checklists.map(cl => (
           <div 
             key={cl.id}
-            onClick={() => onSelect(cl)}
             className="glass-card p-8 rounded-3xl hover:shadow-indigo-100 hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
           >
-            <div className="flex items-center gap-4 mb-6">
-              <div className="bg-indigo-50 p-4 rounded-2xl group-hover:bg-indigo-600 transition-all duration-300">
-                <ClipboardCheck className="w-6 h-6 text-indigo-600 group-hover:text-white" />
+            <div onClick={() => onSelect(cl)}>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="bg-indigo-50 p-4 rounded-2xl group-hover:bg-indigo-600 transition-all duration-300">
+                  <ClipboardCheck className="w-6 h-6 text-indigo-600 group-hover:text-white" />
+                </div>
+                <div>
+                  <h4 className="text-xl font-extrabold text-slate-900 tracking-tight">{cl.title}</h4>
+                  <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">{cl.items.length} Security Controls</p>
+                </div>
               </div>
-              <div>
-                <h4 className="text-xl font-extrabold text-slate-900 tracking-tight">{cl.title}</h4>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">{cl.items.length} Security Controls</p>
-              </div>
+              <p className="text-slate-500 text-sm font-medium leading-relaxed">{cl.description}</p>
             </div>
-            <p className="text-slate-500 text-sm font-medium leading-relaxed">{cl.description}</p>
+            
             <div className="mt-8 flex items-center justify-between">
               <div className="flex -space-x-2">
                 {Array.from(new Set(cl.items.map(i => i.category))).map(cat => (
@@ -682,8 +759,18 @@ function ChecklistsListView({ checklists, onSelect, onCreate }: { checklists: Ch
                   </div>
                 ))}
               </div>
-              <div className="bg-slate-50 p-2 rounded-lg group-hover:bg-indigo-50 transition-colors">
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-600" />
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onEdit(cl); }}
+                    className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
+                )}
+                <div onClick={() => onSelect(cl)} className="bg-slate-50 p-2 rounded-lg group-hover:bg-indigo-50 transition-colors">
+                  <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-600" />
+                </div>
               </div>
             </div>
           </div>
@@ -741,6 +828,7 @@ function TargetDetailView({ target, checklist, onBack, onDelete, onUpdate }: { t
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<RiskAnalysis | null>(null);
   const [selectedModel, setSelectedModel] = useState<AIModel>('gemini-3-flash-preview');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const riskScore = useMemo(() => {
     const results = target.checklistResults[checklist.id] || {};
@@ -838,28 +926,46 @@ function TargetDetailView({ target, checklist, onBack, onDelete, onUpdate }: { t
                 return (
                   <div 
                     key={item.id} 
-                    onClick={() => toggleItem(item.id)}
-                    className={`flex items-center justify-between p-6 rounded-2xl border-2 transition-all cursor-pointer ${
+                    className={`flex flex-col gap-2 p-6 rounded-2xl border-2 transition-all ${
                       completed 
                         ? 'border-emerald-200 bg-emerald-50/50 shadow-inner' 
                         : 'border-slate-100 bg-white/40 hover:border-indigo-200 hover:bg-white/60'
                     }`}
                   >
-                    <div className="flex items-center gap-5">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
-                        completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'
-                      }`}>
-                        {completed && <CheckCircle2 className="w-4 h-4 text-white" />}
+                    <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleItem(item.id)}>
+                      <div className="flex items-center gap-5">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
+                          completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'
+                        }`}>
+                          {completed && <CheckCircle2 className="w-4 h-4 text-white" />}
+                        </div>
+                        <span className={`text-lg font-bold ${completed ? 'text-emerald-700' : 'text-slate-600'}`}>
+                          {item.text}
+                        </span>
                       </div>
-                      <span className={`text-lg font-bold ${completed ? 'text-emerald-700' : 'text-slate-600'}`}>
-                        {item.text}
-                      </span>
+                      <div className="flex items-center gap-4">
+                        <span className="text-[10px] uppercase font-extrabold tracking-widest px-3 py-1 bg-white/80 rounded-lg text-slate-500 border border-slate-100">
+                          {item.category}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-[10px] uppercase font-extrabold tracking-widest px-3 py-1 bg-white/80 rounded-lg text-slate-500 border border-slate-100">
-                        {item.category}
-                      </span>
-                    </div>
+                    {item.description && (
+                      <div 
+                        onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
+                        className="mt-1 ml-11 text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer w-fit"
+                      >
+                        {expandedId === item.id ? 'Hide Details' : 'View Detailed Requirements'}
+                      </div>
+                    )}
+                    {expandedId === item.id && item.description && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        className="mt-3 ml-11 p-4 bg-slate-50/80 rounded-xl border border-slate-200 text-sm text-slate-600 leading-relaxed"
+                      >
+                        {item.description}
+                      </motion.div>
+                    )}
                   </div>
                 );
               })}
@@ -1014,7 +1120,7 @@ interface TargetRowProps {
   onClick: () => void;
 }
 
-function SettingsView() {
+function SettingsView({ isAdmin, setIsAdmin }: { isAdmin: boolean, setIsAdmin: (val: boolean) => void }) {
   const [aiStatus, setAiStatus] = useState({
     gemini: 'Connected',
     openai: 'Not Configured',
@@ -1024,13 +1130,32 @@ function SettingsView() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="glass-card p-10 rounded-3xl">
-        <div className="flex items-center gap-4 mb-10">
-          <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-100">
-            <Settings className="w-8 h-8 text-white" />
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-4">
+            <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-100">
+              <Settings className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">System Settings</h3>
+              <p className="text-slate-500 font-medium mt-1">Configure your AI engines and fleet parameters.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">System Settings</h3>
-            <p className="text-slate-500 font-medium mt-1">Configure your AI engines and fleet parameters.</p>
+          <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isAdmin ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border border-slate-200 shadow-sm'}`}>
+                <Shield className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Researcher Mode</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Enable Editing</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setIsAdmin(!isAdmin)}
+              className={`w-14 h-7 rounded-full transition-all relative ${isAdmin ? 'bg-indigo-600' : 'bg-slate-200'}`}
+            >
+              <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${isAdmin ? 'left-8' : 'left-1'}`} />
+            </button>
           </div>
         </div>
 

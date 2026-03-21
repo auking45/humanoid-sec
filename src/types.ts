@@ -6,7 +6,8 @@
 export interface ChecklistItem {
   id: string;
   text: string;
-  category: 'Network' | 'Physical' | 'Software' | 'Access Control';
+  description?: string;
+  category: 'Network' | 'Physical' | 'Software' | 'Access Control' | 'System Security' | 'OS Hardening' | 'Cloud Communication' | 'Local Network' | 'Audit Logging';
   weight: number; // 1 to 5
 }
 

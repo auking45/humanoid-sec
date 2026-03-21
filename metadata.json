@@ -1,5 +1,5 @@
 {
-  "name": "Robot Security Dashboard",
-  "description": "A comprehensive dashboard for robot security research, checklist management, and risk analysis.",
+  "name": "Humanoid-Sec Dashboard",
+  "description": "Comprehensive security auditing and management dashboard for humanoid robots, featuring target tracking, risk analysis, and checklist management.",
   "requestFramePermissions": []
 }
