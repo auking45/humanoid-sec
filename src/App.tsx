@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Shield, 
   LayoutDashboard, 
@@ -84,6 +84,8 @@ export default function App() {
 
   const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null);
   const [showAddChecklistModal, setShowAddChecklistModal] = useState(false);
+  const [showSeedModal, setShowSeedModal] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [newChecklist, setNewChecklist] = useState<Checklist>({
     id: '',
     title: '',
@@ -100,30 +102,31 @@ export default function App() {
     localStorage.setItem('app-theme', currentTheme.id);
   }, [currentTheme]);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [targetsRes, checklistsRes] = await Promise.all([
-          fetch('/api/targets'),
-          fetch('/api/checklists')
+  const fetchData = useCallback(async () => {
+    try {
+      const [targetsRes, checklistsRes] = await Promise.all([
+        fetch('/api/targets'),
+        fetch('/api/checklists')
+      ]);
+      
+      if (targetsRes.ok && checklistsRes.ok) {
+        const [targetsData, checklistsData] = await Promise.all([
+          targetsRes.json(),
+          checklistsRes.json()
         ]);
-        
-        if (targetsRes.ok && checklistsRes.ok) {
-          const [targetsData, checklistsData] = await Promise.all([
-            targetsRes.json(),
-            checklistsRes.json()
-          ]);
-          setTargets(targetsData);
-          setChecklists(checklistsData);
-        }
-      } catch (error) {
-        console.error('Failed to fetch data:', error);
-      } finally {
-        setIsLoading(false);
+        setTargets(targetsData);
+        setChecklists(checklistsData);
       }
-    };
-    fetchData();
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const activeChecklist = useMemo(() => {
     if (!checklists.length) return null;
@@ -349,11 +352,94 @@ export default function App() {
                   setIsAdmin={setIsAdmin} 
                   currentTheme={currentTheme}
                   onThemeChange={setCurrentTheme}
+                  onSeed={() => setShowSeedModal(true)}
                 />
               )}
             </motion.div>
           </AnimatePresence>
         </div>
+
+        <AnimatePresence>
+          {showSeedModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="bg-white w-full max-w-md rounded-3xl shadow-2xl overflow-hidden"
+              >
+                <div className="p-8 text-center">
+                  <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-amber-100">
+                    <AlertTriangle className="w-10 h-10 text-amber-600" />
+                  </div>
+                  <h3 className="text-2xl font-extrabold text-slate-900 mb-3">Initialize Database?</h3>
+                  <p className="text-slate-500 font-medium leading-relaxed">
+                    This will delete all your current targets and checklists and replace them with the standard security baseline. This action cannot be undone.
+                  </p>
+                </div>
+                <div className="p-8 bg-slate-50 flex gap-4">
+                  <button 
+                    disabled={isSeeding}
+                    onClick={() => !isSeeding && setShowSeedModal(false)}
+                    className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 transition-all disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    disabled={isSeeding}
+                    onClick={async () => {
+                      if (isSeeding) return;
+                      setIsSeeding(true);
+                      console.log("Starting database seeding...");
+                      try {
+                        const res = await fetch('/api/seed', { 
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' }
+                        });
+                        if (res.ok) {
+                          console.log("Seeding successful, updating UI...");
+                          // Reset states in a specific order
+                          setIsSeeding(false);
+                          setShowSeedModal(false);
+                          setActiveTab('dashboard');
+                          fetchData();
+                        } else {
+                          const errorData = await res.json();
+                          console.error("Seeding failed:", errorData);
+                          alert("Failed to seed database: " + (errorData.error || "Unknown error"));
+                          setIsSeeding(false);
+                          setShowSeedModal(false);
+                        }
+                      } catch (e) {
+                        console.error("Seeding error:", e);
+                        alert("An error occurred while seeding the database.");
+                        setIsSeeding(false);
+                        setShowSeedModal(false);
+                      }
+                    }}
+                    className={`flex-1 px-6 py-3 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${
+                      isSeeding ? 'bg-slate-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark shadow-primary/20 cursor-pointer'
+                    }`}
+                  >
+                    {isSeeding ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Seeding...
+                      </>
+                    ) : (
+                      'Yes, Reset Data'
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Add Target Modal */}
@@ -1374,12 +1460,14 @@ function SettingsView({
   isAdmin, 
   setIsAdmin, 
   currentTheme, 
-  onThemeChange 
+  onThemeChange,
+  onSeed
 }: { 
   isAdmin: boolean, 
   setIsAdmin: (val: boolean) => void,
   currentTheme: Theme,
-  onThemeChange: (theme: Theme) => void
+  onThemeChange: (theme: Theme) => void,
+  onSeed: () => void
 }) {
   const [aiStatus, setAiStatus] = useState({
     gemini: 'Connected',
@@ -1486,9 +1574,22 @@ function SettingsView({
           </section>
 
           <section className="pt-10 border-t border-slate-100">
-            <h4 className="text-xs font-extrabold text-primary uppercase tracking-[0.2em] mb-6">Fleet Management</h4>
-            <div className="p-8 bg-slate-50 rounded-2xl border border-slate-100 text-center">
-              <p className="text-slate-500 font-medium">Additional fleet configuration options will be available in future updates.</p>
+            <h4 className="text-xs font-extrabold text-primary uppercase tracking-[0.2em] mb-6">Database Management</h4>
+            <div className="p-8 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col items-center gap-4">
+              <div className="flex items-center gap-3 text-amber-600 bg-amber-50 px-4 py-2 rounded-lg border border-amber-100">
+                <AlertTriangle className="w-4 h-4" />
+                <span className="text-xs font-bold">Warning: Seeding will overwrite all current data.</span>
+              </div>
+              <p className="text-slate-500 text-sm font-medium text-center max-w-md">
+                If your local environment is missing the standard security checklists, use the button below to initialize the database with default security standards.
+              </p>
+              <button 
+                onClick={onSeed}
+                className="px-6 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
+              >
+                <Plus className="w-4 h-4" />
+                Seed Default Security Data
+              </button>
             </div>
           </section>
         </div>
