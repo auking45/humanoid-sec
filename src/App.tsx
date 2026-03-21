@@ -24,10 +24,19 @@ import {
   Brain,
   Sparkles,
   Settings,
+  Download,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Checklist, Target, RiskAnalysis, AIModel } from './types';
 import { analyzeRobotRisk } from './services/aiService';
+import { 
+  exportChecklistToMarkdown, 
+  exportAllChecklistsToMarkdown,
+  downloadMarkdown, 
+  generateChecklistPDF, 
+  generateAllChecklistsPDF,
+  generateTargetSecurityReport 
+} from './services/reportingService';
 
 const MOCK_CHECKLIST: Checklist = {
   id: 'cl-1',
@@ -495,12 +504,11 @@ export default function App() {
                             <option value="Network">Network</option>
                             <option value="Physical">Physical</option>
                             <option value="Software">Software</option>
-                            <option value="Access Control">Access Control</option>
-                            <option value="System Security">System Security</option>
-                            <option value="OS Hardening">OS Hardening</option>
-                            <option value="Cloud Communication">Cloud Communication</option>
-                            <option value="Local Network">Local Network</option>
-                            <option value="Audit Logging">Audit Logging</option>
+                            <option value="Access">Access Control</option>
+                            <option value="System">System</option>
+                            <option value="OS">OS Hardening</option>
+                            <option value="Cloud">Cloud Communication</option>
+                            <option value="Audit">Audit Logging</option>
                           </select>
                         </div>
                         <div className="w-24">
@@ -642,10 +650,31 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit }: { checklist: Chec
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
-          <ChevronRight className="w-4 h-4 rotate-180" />
-          Back to Checklists
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            Back to Checklists
+          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => {
+                const md = exportChecklistToMarkdown(checklist);
+                downloadMarkdown(checklist.title, md);
+              }}
+              className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center gap-2"
+              title="Export as Markdown"
+            >
+              MD
+            </button>
+            <button 
+              onClick={() => generateChecklistPDF(checklist)}
+              className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center gap-2"
+              title="Export as PDF"
+            >
+              PDF
+            </button>
+          </div>
+        </div>
         {isAdmin && (
           <button 
             onClick={() => onEdit(checklist)}
@@ -720,6 +749,26 @@ function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin }:
         <div>
           <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">Security Checklists</h3>
           <p className="text-slate-500 font-medium mt-1">Standardized security controls for different robot classes.</p>
+          <div className="flex items-center gap-2 mt-3">
+            <button 
+              onClick={() => {
+                const md = exportAllChecklistsToMarkdown(checklists);
+                downloadMarkdown('Full_Security_Checklists', md);
+              }}
+              className="text-xs font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-1 transition-colors"
+            >
+              <Download className="w-3 h-3" />
+              Export All (MD)
+            </button>
+            <span className="text-slate-200">|</span>
+            <button 
+              onClick={() => generateAllChecklistsPDF(checklists)}
+              className="text-xs font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-1 transition-colors"
+            >
+              <Download className="w-3 h-3" />
+              Export All (PDF)
+            </button>
+          </div>
         </div>
         {isAdmin && (
           <button 
@@ -866,10 +915,19 @@ function TargetDetailView({ target, checklist, onBack, onDelete, onUpdate }: { t
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20">
       <div className="flex items-center justify-between">
-        <button onClick={onBack} className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
-          <ChevronRight className="w-4 h-4 rotate-180" />
-          Back to Fleet
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={onBack} className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            Back to Fleet
+          </button>
+          <button 
+            onClick={() => generateTargetSecurityReport(target, checklist, analysis)}
+            className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
+          >
+            <ClipboardCheck className="w-4 h-4" />
+            Generate Security Report
+          </button>
+        </div>
         <button 
           onClick={() => { if(confirm('Are you sure you want to decommission this target?')) onDelete(target.id); }}
           className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-bold transition-all"
