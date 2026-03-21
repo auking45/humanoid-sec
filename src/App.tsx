@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   Shield,
   LayoutDashboard,
@@ -103,6 +103,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [targetChecklistId, setTargetChecklistId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const itemsEndRef = useRef<HTMLDivElement>(null);
 
   const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null);
   const [showAddChecklistModal, setShowAddChecklistModal] = useState(false);
@@ -597,10 +598,13 @@ export default function App() {
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-extrabold text-primary uppercase tracking-widest">Checklist Items</h4>
                     <button
-                      onClick={() => setNewChecklist({
-                        ...newChecklist,
-                        items: [...newChecklist.items, { id: `i${Date.now()}`, text: '', category: 'Software', weight: 3 }]
-                      })}
+                      onClick={() => {
+                        setNewChecklist({
+                          ...newChecklist,
+                          items: [...newChecklist.items, { id: `i${Date.now()}`, text: '', category: 'Software', weight: 3 }]
+                        });
+                        setTimeout(() => itemsEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                      }}
                       className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
                     >
                       <Plus className="w-3 h-3" /> Add Item
@@ -687,6 +691,7 @@ export default function App() {
                       </div>
                     </div>
                   ))}
+                  <div ref={itemsEndRef} />
                 </div>
               </div>
               <div className="p-6 bg-slate-50 flex gap-3">
