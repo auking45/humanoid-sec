@@ -61,6 +61,7 @@ export default function App() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTarget, setNewTarget] = useState({ name: '', type: '', description: '' });
   const [searchQuery, setSearchQuery] = useState('');
+  const [targetChecklistId, setTargetChecklistId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const [selectedChecklist, setSelectedChecklist] = useState<Checklist | null>(null);
@@ -97,7 +98,11 @@ export default function App() {
     fetchData();
   }, []);
 
-  const activeChecklist = checklists[0]; // Default to first one for now
+  const activeChecklist = useMemo(() => {
+    if (!checklists.length) return null;
+    if (targetChecklistId) return checklists.find(c => c.id === targetChecklistId) || checklists[0];
+    return checklists[0];
+  }, [checklists, targetChecklistId]);
 
   const filteredTargets = useMemo(() => {
     return targets.filter(t => 
@@ -299,7 +304,9 @@ export default function App() {
                   ? <TargetDetailView 
                       target={selectedTarget} 
                       checklist={activeChecklist} 
-                      onBack={() => setSelectedTarget(null)} 
+                      allChecklists={checklists}
+                      onChecklistChange={setTargetChecklistId}
+                      onBack={() => { setSelectedTarget(null); setTargetChecklistId(null); }} 
                       onDelete={handleDeleteTarget}
                       onUpdate={handleUpdateTarget}
                     />
@@ -873,20 +880,42 @@ function TargetsListView({ targets, onSelect }: { targets: Target[], onSelect: (
   );
 }
 
-function TargetDetailView({ target, checklist, onBack, onDelete, onUpdate }: { target: Target, checklist: Checklist, onBack: () => void, onDelete: (id: string) => void, onUpdate: (t: Target) => void }) {
+function TargetDetailView({ 
+  target, 
+  checklist, 
+  allChecklists,
+  onChecklistChange,
+  onBack, 
+  onDelete, 
+  onUpdate 
+}: { 
+  target: Target, 
+  checklist: Checklist, 
+  allChecklists: Checklist[],
+  onChecklistChange: (id: string) => void,
+  onBack: () => void, 
+  onDelete: (id: string) => void, 
+  onUpdate: (t: Target) => void 
+}) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<RiskAnalysis | null>(null);
   const [selectedModel, setSelectedModel] = useState<AIModel>('gemini-3-flash-preview');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const riskScore = useMemo(() => {
-    const results = target.checklistResults[checklist.id] || {};
-    const totalWeight = checklist.items.reduce((acc, item) => acc + item.weight, 0);
-    const failedWeight = checklist.items.reduce((acc, item) => {
-      return acc + (results[item.id] ? 0 : item.weight);
-    }, 0);
-    return Math.round((failedWeight / totalWeight) * 100);
-  }, [target, checklist]);
+    let totalWeight = 0;
+    let failedWeight = 0;
+    
+    allChecklists.forEach(cl => {
+      const results = target.checklistResults[cl.id] || {};
+      cl.items.forEach(item => {
+        totalWeight += item.weight;
+        failedWeight += (results[item.id] ? 0 : item.weight);
+      });
+    });
+    
+    return totalWeight > 0 ? Math.round((failedWeight / totalWeight) * 100) : 0;
+  }, [target, allChecklists]);
 
   const toggleItem = (itemId: string) => {
     const currentResults = target.checklistResults[checklist.id] || {};
@@ -897,7 +926,20 @@ function TargetDetailView({ target, checklist, onBack, onDelete, onUpdate }: { t
         [itemId]: !currentResults[itemId]
       }
     };
-    onUpdate({ ...target, checklistResults: newResults, riskScore });
+    
+    // Calculate new global risk score
+    let totalWeight = 0;
+    let failedWeight = 0;
+    allChecklists.forEach(cl => {
+      const results = cl.id === checklist.id ? newResults[cl.id] : (target.checklistResults[cl.id] || {});
+      cl.items.forEach(item => {
+        totalWeight += item.weight;
+        failedWeight += (results[item.id] ? 0 : item.weight);
+      });
+    });
+    const newRiskScore = totalWeight > 0 ? Math.round((failedWeight / totalWeight) * 100) : 0;
+    
+    onUpdate({ ...target, checklistResults: newResults, riskScore: newRiskScore });
   };
 
   const handleAnalyze = async () => {
@@ -939,11 +981,33 @@ function TargetDetailView({ target, checklist, onBack, onDelete, onUpdate }: { t
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
+          {/* Checklist Selector */}
+          <div className="relative group">
+            <div className="flex items-center gap-2 overflow-x-auto pb-4 custom-scrollbar-h">
+              {allChecklists.map(cl => (
+                <button
+                  key={cl.id}
+                  onClick={() => onChecklistChange(cl.id)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border-2 ${
+                    checklist.id === cl.id 
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' 
+                      : 'bg-white text-slate-500 border-slate-100 hover:border-indigo-200'
+                  }`}
+                >
+                  {cl.title}
+                </button>
+              ))}
+            </div>
+            {/* Gradient Fades */}
+            <div className="absolute top-0 right-0 bottom-4 w-12 bg-gradient-to-l from-[#F0F2F5] to-transparent pointer-events-none opacity-60 transition-opacity" />
+            <div className="absolute top-0 left-0 bottom-4 w-12 bg-gradient-to-r from-[#F0F2F5] to-transparent pointer-events-none opacity-60 transition-opacity" />
+          </div>
+
           <div className="glass-card p-10 rounded-3xl">
             <div className="flex items-center justify-between mb-10">
               <div>
-                <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">Security Hardening</h3>
-                <p className="text-slate-500 font-medium mt-1">Interactive checklist to reduce system vulnerability.</p>
+                <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">{checklist.title}</h3>
+                <p className="text-slate-500 font-medium mt-1">{checklist.description}</p>
               </div>
               <div className="flex items-center gap-4">
                 <div className="flex flex-col items-end">
