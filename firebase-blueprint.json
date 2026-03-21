@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "Checklist": {
+      "title": "Checklist",
+      "description": "A security checklist template",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "text": { "type": "string" },
+              "category": { "type": "string" },
+              "weight": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["title", "items"]
+    },
+    "Target": {
+      "title": "Target",
+      "description": "A robot security target",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "description": { "type": "string" },
+        "checklistResults": { "type": "object" },
+        "riskScore": { "type": "number" },
+        "lastAnalyzed": { "type": "string" }
+      },
+      "required": ["name", "type"]
+    },
+    "RiskAnalysis": {
+      "title": "RiskAnalysis",
+      "description": "AI-generated risk analysis report",
+      "type": "object",
+      "properties": {
+        "targetId": { "type": "string" },
+        "summary": { "type": "string" },
+        "recommendations": { "type": "array", "items": { "type": "string" } },
+        "severity": { "type": "string", "enum": ["Low", "Medium", "High", "Critical"] }
+      },
+      "required": ["targetId", "summary", "severity"]
+    }
+  },
+  "firestore": {
+    "/checklists": {
+      "schema": "Checklist",
+      "description": "Collection of security checklists"
+    },
+    "/targets": {
+      "schema": "Target",
+      "description": "Collection of robot security targets"
+    },
+    "/targets/{targetId}/analyses": {
+      "schema": "RiskAnalysis",
+      "description": "Sub-collection of AI risk analyses for a target"
+    }
+  }
+}
