@@ -1583,13 +1583,22 @@ function SettingsView({
               <p className="text-slate-500 text-sm font-medium text-center max-w-md">
                 If your local environment is missing the standard security checklists, use the button below to initialize the database with default security standards.
               </p>
-              <button 
-                onClick={onSeed}
-                className="px-6 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
-              >
-                <Plus className="w-4 h-4" />
-                Seed Default Security Data
-              </button>
+              <div className="flex flex-wrap justify-center gap-4">
+                <button 
+                  onClick={onSeed}
+                  className="px-6 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
+                >
+                  <Plus className="w-4 h-4" />
+                  Seed Default Security Data
+                </button>
+                <button 
+                  onClick={() => window.open('/api/backup', '_blank')}
+                  className="px-6 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  Download Backup (JSON)
+                </button>
+              </div>
             </div>
           </section>
         </div>

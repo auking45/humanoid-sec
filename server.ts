@@ -130,6 +130,10 @@ async function initDb() {
     if (!columns.some((c: any) => c.name === 'review_status')) {
       sqliteDb.exec("ALTER TABLE checklist_results ADD COLUMN review_status TEXT DEFAULT 'pending'");
     }
+    const itemColumns = sqliteDb.prepare("PRAGMA table_info(checklist_items)").all();
+    if (!itemColumns.some((c: any) => c.name === 'description')) {
+      sqliteDb.exec("ALTER TABLE checklist_items ADD COLUMN description TEXT");
+    }
   } else {
     await query(`
       DO $$
@@ -139,6 +143,9 @@ async function initDb() {
         END IF;
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='checklist_results' AND column_name='review_status') THEN
           ALTER TABLE checklist_results ADD COLUMN review_status TEXT DEFAULT 'pending';
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='checklist_items' AND column_name='description') THEN
+          ALTER TABLE checklist_items ADD COLUMN description TEXT;
         END IF;
       END $$;
     `);
@@ -168,23 +175,17 @@ async function initDb() {
   if (count === 0 || clCount === 0) {
     console.log('Initializing database with seed data...');
     
+    // 1. Insert targets
     if (count === 0) {
       for (const t of INITIAL_DATA.targets) {
         await query(
           'INSERT INTO targets (id, name, type, description, risk_score, last_analyzed) VALUES ($1, $2, $3, $4, $5, $6)',
           [t.id, t.name, t.type, t.description, t.riskScore, t.lastAnalyzed]
         );
-        for (const clId in t.checklistResults) {
-          for (const itemId in t.checklistResults[clId]) {
-            await query(
-              'INSERT INTO checklist_results (target_id, checklist_id, item_id, is_checked) VALUES ($1, $2, $3, $4)',
-              [t.id, clId, itemId, t.checklistResults[clId][itemId] ? 1 : 0]
-            );
-          }
-        }
       }
     }
 
+    // 2. Insert checklists and items
     if (clCount === 0) {
       for (const cl of INITIAL_DATA.checklists) {
         await query(
@@ -196,6 +197,25 @@ async function initDb() {
             'INSERT INTO checklist_items (id, checklist_id, text, description, category, weight) VALUES ($1, $2, $3, $4, $5, $6)',
             [item.id, cl.id, item.text, item.description || null, item.category, item.weight]
           );
+        }
+      }
+    }
+
+    // 3. Insert checklist_results (depends on both)
+    if (count === 0) {
+      for (const t of INITIAL_DATA.targets) {
+        for (const clId in t.checklistResults) {
+          for (const itemId in t.checklistResults[clId]) {
+            const res = t.checklistResults[clId][itemId];
+            const isChecked = typeof res === 'boolean' ? res : res.checked;
+            const justification = typeof res === 'boolean' ? null : res.justification;
+            const reviewStatus = typeof res === 'boolean' ? 'pending' : res.reviewStatus;
+
+            await query(
+              'INSERT INTO checklist_results (target_id, checklist_id, item_id, is_checked, justification, review_status) VALUES ($1, $2, $3, $4, $5, $6)',
+              [t.id, clId, itemId, isChecked ? 1 : 0, justification, reviewStatus]
+            );
+          }
         }
       }
     }
@@ -451,6 +471,29 @@ async function startServer() {
       }
 
       res.json({ message: "Database seeded successfully" });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/backup", async (req, res) => {
+    try {
+      const targets = await query('SELECT * FROM targets');
+      const checklists = await query('SELECT * FROM checklists');
+      const checklistItems = await query('SELECT * FROM checklist_items');
+      const checklistResults = await query('SELECT * FROM checklist_results');
+
+      const backupData = {
+        timestamp: new Date().toISOString(),
+        targets: targets.rows,
+        checklists: checklists.rows,
+        checklistItems: checklistItems.rows,
+        checklistResults: checklistResults.rows
+      };
+
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename=security_backup_${new Date().toISOString().split('T')[0]}.json`);
+      res.send(JSON.stringify(backupData, null, 2));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
