@@ -27,7 +27,7 @@ import {
   Download,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Checklist, Target, RiskAnalysis, AIModel } from './types';
+import { Checklist, Target, RiskAnalysis, AIModel, ChecklistResult } from './types';
 import { analyzeRobotRisk } from './services/aiService';
 import { 
   exportChecklistToMarkdown, 
@@ -305,6 +305,7 @@ export default function App() {
                       target={selectedTarget} 
                       checklist={activeChecklist} 
                       allChecklists={checklists}
+                      isAdmin={isAdmin}
                       onChecklistChange={setTargetChecklistId}
                       onBack={() => { setSelectedTarget(null); setTargetChecklistId(null); }} 
                       onDelete={handleDeleteTarget}
@@ -884,6 +885,7 @@ function TargetDetailView({
   target, 
   checklist, 
   allChecklists,
+  isAdmin,
   onChecklistChange,
   onBack, 
   onDelete, 
@@ -892,6 +894,7 @@ function TargetDetailView({
   target: Target, 
   checklist: Checklist, 
   allChecklists: Checklist[],
+  isAdmin: boolean,
   onChecklistChange: (id: string) => void,
   onBack: () => void, 
   onDelete: (id: string) => void, 
@@ -902,43 +905,84 @@ function TargetDetailView({
   const [selectedModel, setSelectedModel] = useState<AIModel>('gemini-3-flash-preview');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const riskScore = useMemo(() => {
+  const calculateGlobalRiskScore = (results: Record<string, Record<string, ChecklistResult>>) => {
     let totalWeight = 0;
     let failedWeight = 0;
     
     allChecklists.forEach(cl => {
-      const results = target.checklistResults[cl.id] || {};
+      const clResults = results[cl.id] || {};
       cl.items.forEach(item => {
         totalWeight += item.weight;
-        failedWeight += (results[item.id] ? 0 : item.weight);
+        const res = clResults[item.id];
+        const isCompleted = res?.checked;
+        const isApproved = res?.reviewStatus === 'approved';
+        
+        if (!isCompleted && !isApproved) {
+          failedWeight += item.weight;
+        }
       });
     });
     
     return totalWeight > 0 ? Math.round((failedWeight / totalWeight) * 100) : 0;
+  };
+
+  const riskScore = useMemo(() => {
+    return calculateGlobalRiskScore(target.checklistResults);
   }, [target, allChecklists]);
 
   const toggleItem = (itemId: string) => {
     const currentResults = target.checklistResults[checklist.id] || {};
+    const itemResult = currentResults[itemId] || { checked: false, justification: '', reviewStatus: 'pending' };
+    
     const newResults = {
       ...target.checklistResults,
       [checklist.id]: {
         ...currentResults,
-        [itemId]: !currentResults[itemId]
+        [itemId]: {
+          ...itemResult,
+          checked: !itemResult.checked
+        }
       }
     };
     
-    // Calculate new global risk score
-    let totalWeight = 0;
-    let failedWeight = 0;
-    allChecklists.forEach(cl => {
-      const results = cl.id === checklist.id ? newResults[cl.id] : (target.checklistResults[cl.id] || {});
-      cl.items.forEach(item => {
-        totalWeight += item.weight;
-        failedWeight += (results[item.id] ? 0 : item.weight);
-      });
-    });
-    const newRiskScore = totalWeight > 0 ? Math.round((failedWeight / totalWeight) * 100) : 0;
+    const newRiskScore = calculateGlobalRiskScore(newResults);
+    onUpdate({ ...target, checklistResults: newResults, riskScore: newRiskScore });
+  };
+
+  const updateJustification = (itemId: string, justification: string) => {
+    const currentResults = target.checklistResults[checklist.id] || {};
+    const itemResult = currentResults[itemId] || { checked: false, justification: '', reviewStatus: 'pending' };
     
+    const newResults = {
+      ...target.checklistResults,
+      [checklist.id]: {
+        ...currentResults,
+        [itemId]: {
+          ...itemResult,
+          justification
+        }
+      }
+    };
+    
+    onUpdate({ ...target, checklistResults: newResults });
+  };
+
+  const updateReviewStatus = (itemId: string, status: 'pending' | 'approved' | 'rejected') => {
+    const currentResults = target.checklistResults[checklist.id] || {};
+    const itemResult = currentResults[itemId] || { checked: false, justification: '', reviewStatus: 'pending' };
+    
+    const newResults = {
+      ...target.checklistResults,
+      [checklist.id]: {
+        ...currentResults,
+        [itemId]: {
+          ...itemResult,
+          reviewStatus: status
+        }
+      }
+    };
+    
+    const newRiskScore = calculateGlobalRiskScore(newResults);
     onUpdate({ ...target, checklistResults: newResults, riskScore: newRiskScore });
   };
 
@@ -1044,25 +1088,32 @@ function TargetDetailView({
             
             <div className="grid gap-4">
               {checklist.items.map(item => {
-                const completed = target.checklistResults[checklist.id]?.[item.id];
+                const result = target.checklistResults[checklist.id]?.[item.id] || { checked: false, justification: '', reviewStatus: 'pending' };
+                const completed = result.checked;
+                const isApproved = result.reviewStatus === 'approved';
+                const isRejected = result.reviewStatus === 'rejected';
+
                 return (
                   <div 
                     key={item.id} 
-                    className={`flex flex-col gap-2 p-6 rounded-2xl border-2 transition-all ${
+                    className={`flex flex-col gap-4 p-6 rounded-2xl border-2 transition-all ${
                       completed 
                         ? 'border-emerald-200 bg-emerald-50/50 shadow-inner' 
-                        : 'border-slate-100 bg-white/40 hover:border-indigo-200 hover:bg-white/60'
+                        : isApproved
+                          ? 'border-indigo-200 bg-indigo-50/50 shadow-inner'
+                          : 'border-slate-100 bg-white/40 hover:border-indigo-200 hover:bg-white/60'
                     }`}
                   >
-                    <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleItem(item.id)}>
-                      <div className="flex items-center gap-5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-5 cursor-pointer" onClick={() => toggleItem(item.id)}>
                         <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
                           completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'
                         }`}>
                           {completed && <CheckCircle2 className="w-4 h-4 text-white" />}
                         </div>
-                        <span className={`text-lg font-bold ${completed ? 'text-emerald-700' : 'text-slate-600'}`}>
+                        <span className={`text-lg font-bold ${completed ? 'text-emerald-700' : isApproved ? 'text-indigo-700' : 'text-slate-600'}`}>
                           {item.text}
+                          {isApproved && <span className="ml-3 text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full uppercase tracking-widest">Exception Approved</span>}
                         </span>
                       </div>
                       <div className="flex items-center gap-4">
@@ -1071,6 +1122,44 @@ function TargetDetailView({
                         </span>
                       </div>
                     </div>
+
+                    {!completed && (
+                      <div className="ml-11 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle className={`w-4 h-4 ${isApproved ? 'text-indigo-400' : 'text-amber-500'}`} />
+                          <p className="text-xs font-bold text-slate-500">Justification for Exception</p>
+                        </div>
+                        <textarea
+                          value={result.justification}
+                          onChange={(e) => updateJustification(item.id, e.target.value)}
+                          placeholder="Why is this control not applicable or currently unachievable?"
+                          className="w-full p-3 bg-white/80 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none h-20"
+                        />
+                        
+                        {isAdmin && result.justification && (
+                          <div className="flex items-center gap-3 pt-2">
+                            <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Expert Review:</p>
+                            <button 
+                              onClick={() => updateReviewStatus(item.id, 'approved')}
+                              className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                isApproved ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600'
+                              }`}
+                            >
+                              Approve
+                            </button>
+                            <button 
+                              onClick={() => updateReviewStatus(item.id, 'rejected')}
+                              className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
+                                isRejected ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600'
+                              }`}
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {item.description && (
                       <div 
                         onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}

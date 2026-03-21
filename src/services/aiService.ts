@@ -13,12 +13,26 @@ export async function analyzeRobotRisk(
   checklist: Checklist,
   model: AIModel = 'gemini-3-flash-preview'
 ): Promise<RiskAnalysis> {
+  const results = target.checklistResults[checklist.id] || {};
   const completedItems = checklist.items.filter(
-    (item) => target.checklistResults[checklist.id]?.[item.id]
+    (item) => {
+      const res = results[item.id];
+      return typeof res === 'boolean' ? res : res?.checked;
+    }
   );
   const missingItems = checklist.items.filter(
-    (item) => !target.checklistResults[checklist.id]?.[item.id]
+    (item) => {
+      const res = results[item.id];
+      return !(typeof res === 'boolean' ? res : res?.checked);
+    }
   );
+
+  const missingItemsWithJustification = missingItems.map(i => {
+    const res = results[i.id];
+    const justification = typeof res === 'object' ? res?.justification : '';
+    const status = typeof res === 'object' ? res?.reviewStatus : 'pending';
+    return `${i.text} [Justification: ${justification || 'None'}, Review Status: ${status}]`;
+  });
 
   const prompt = `
     Analyze the security risk for the following robot:
@@ -28,11 +42,11 @@ export async function analyzeRobotRisk(
 
     Security Checklist: ${checklist.title}
     Completed Items: ${completedItems.map(i => i.text).join(', ')}
-    Missing/Failed Items: ${missingItems.map(i => i.text).join(', ')}
+    Missing/Failed Items (with justifications if provided): ${missingItemsWithJustification.join(', ')}
 
     Please provide a security risk analysis in JSON format with the following structure:
     {
-      "summary": "A brief overview of the security posture",
+      "summary": "A brief overview of the security posture. If an item is missing but has an 'approved' justification, consider it as mitigated but still worth noting.",
       "recommendations": ["list of specific actions to improve security"],
       "severity": "Low" | "Medium" | "High" | "Critical"
     }

@@ -280,23 +280,48 @@ export const generateTargetSecurityReport = (target: Target, checklist: Checklis
   doc.text('Detailed Findings', 14, 140);
 
   const results = target.checklistResults[checklist.id] || {};
-  const findingsData = checklist.items.map(item => [
-    item.text,
-    item.category,
-    item.weight.toString(),
-    results[item.id] ? 'PASSED' : 'FAILED'
-  ]);
+  const findingsData = checklist.items.map(item => {
+    const res = results[item.id];
+    const completed = typeof res === 'boolean' ? res : res?.checked;
+    const justification = typeof res === 'object' ? res?.justification : '';
+    const status = typeof res === 'object' ? res?.reviewStatus : 'pending';
+    
+    let resultText = completed ? 'PASSED' : 'FAILED';
+    if (!completed && status === 'approved') {
+      resultText = 'EXCEPTED (Approved)';
+    } else if (!completed && status === 'rejected') {
+      resultText = 'FAILED (Rejected)';
+    }
+
+    return [
+      item.text,
+      item.category,
+      item.weight.toString(),
+      resultText,
+      justification || 'N/A'
+    ];
+  });
 
   autoTable(doc, {
     startY: 145,
-    head: [['Control', 'Category', 'Weight', 'Result']],
+    head: [['Control', 'Category', 'Weight', 'Result', 'Justification']],
     body: findingsData,
     theme: 'grid',
     headStyles: { fillColor: [79, 70, 229] },
+    columnStyles: {
+      0: { cellWidth: 50 },
+      1: { cellWidth: 30 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 30 },
+      4: { cellWidth: 50 }
+    },
     didParseCell: (data) => {
       if (data.section === 'body' && data.column.index === 3) {
         if (data.cell.text[0] === 'PASSED') {
           data.cell.styles.textColor = [5, 150, 105];
+          data.cell.styles.fontStyle = 'bold';
+        } else if (data.cell.text[0] === 'EXCEPTED (Approved)') {
+          data.cell.styles.textColor = [79, 70, 229];
           data.cell.styles.fontStyle = 'bold';
         } else {
           data.cell.styles.textColor = [225, 29, 72];

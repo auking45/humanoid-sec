@@ -18,12 +18,18 @@ export interface Checklist {
   items: ChecklistItem[];
 }
 
+export interface ChecklistResult {
+  checked: boolean;
+  justification?: string;
+  reviewStatus?: 'pending' | 'approved' | 'rejected';
+}
+
 export interface Target {
   id: string;
   name: string;
   type: string;
   description: string;
-  checklistResults: Record<string, Record<string, boolean>>; // checklistId -> itemId -> completed
+  checklistResults: Record<string, Record<string, ChecklistResult>>; // checklistId -> itemId -> result
   riskScore: number;
   lastAnalyzed: string;
 }

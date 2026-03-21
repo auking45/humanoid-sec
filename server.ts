@@ -79,6 +79,8 @@ async function initDb() {
       checklist_id TEXT NOT NULL,
       item_id TEXT NOT NULL,
       is_checked BOOLEAN NOT NULL,
+      justification TEXT,
+      review_status TEXT DEFAULT 'pending',
       PRIMARY KEY (target_id, checklist_id, item_id),
       CONSTRAINT fk_target FOREIGN KEY (target_id) REFERENCES targets(id) ON DELETE CASCADE,
       CONSTRAINT fk_checklist_res FOREIGN KEY (checklist_id) REFERENCES checklists(id) ON DELETE CASCADE
@@ -94,6 +96,29 @@ async function initDb() {
     }
   } else {
     sqliteDb.exec(schema);
+  }
+
+  // --- Migration: Add justification and review_status to checklist_results if they don't exist ---
+  if (DB_TYPE === 'sqlite') {
+    const columns = sqliteDb.prepare("PRAGMA table_info(checklist_results)").all();
+    if (!columns.some((c: any) => c.name === 'justification')) {
+      sqliteDb.exec("ALTER TABLE checklist_results ADD COLUMN justification TEXT");
+    }
+    if (!columns.some((c: any) => c.name === 'review_status')) {
+      sqliteDb.exec("ALTER TABLE checklist_results ADD COLUMN review_status TEXT DEFAULT 'pending'");
+    }
+  } else {
+    await query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='checklist_results' AND column_name='justification') THEN
+          ALTER TABLE checklist_results ADD COLUMN justification TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='checklist_results' AND column_name='review_status') THEN
+          ALTER TABLE checklist_results ADD COLUMN review_status TEXT DEFAULT 'pending';
+        END IF;
+      END $$;
+    `);
   }
 
   // --- Migration: Update existing category names ---
@@ -291,7 +316,11 @@ class SecurityRepository {
       const targetResults: any = {};
       resultsRes.rows.filter((r: any) => r.target_id === t.id).forEach((r: any) => {
         if (!targetResults[r.checklist_id]) targetResults[r.checklist_id] = {};
-        targetResults[r.checklist_id][r.item_id] = !!r.is_checked;
+        targetResults[r.checklist_id][r.item_id] = {
+          checked: !!r.is_checked,
+          justification: r.justification || '',
+          reviewStatus: r.review_status || 'pending'
+        };
       });
       return { 
         id: t.id,
@@ -314,9 +343,14 @@ class SecurityRepository {
     if (target.checklistResults) {
       for (const clId in target.checklistResults) {
         for (const itemId in target.checklistResults[clId]) {
+          const res = target.checklistResults[clId][itemId];
+          const isChecked = typeof res === 'boolean' ? res : res.checked;
+          const justification = typeof res === 'boolean' ? null : res.justification;
+          const reviewStatus = typeof res === 'boolean' ? 'pending' : res.reviewStatus;
+          
           await query(
-            'INSERT INTO checklist_results (target_id, checklist_id, item_id, is_checked) VALUES ($1, $2, $3, $4)',
-            [target.id, clId, itemId, target.checklistResults[clId][itemId] ? 1 : 0]
+            'INSERT INTO checklist_results (target_id, checklist_id, item_id, is_checked, justification, review_status) VALUES ($1, $2, $3, $4, $5, $6)',
+            [target.id, clId, itemId, isChecked ? 1 : 0, justification, reviewStatus]
           );
         }
       }
@@ -333,9 +367,14 @@ class SecurityRepository {
     if (target.checklistResults) {
       for (const clId in target.checklistResults) {
         for (const itemId in target.checklistResults[clId]) {
+          const res = target.checklistResults[clId][itemId];
+          const isChecked = typeof res === 'boolean' ? res : res.checked;
+          const justification = typeof res === 'boolean' ? null : res.justification;
+          const reviewStatus = typeof res === 'boolean' ? 'pending' : res.reviewStatus;
+
           await query(
-            'INSERT INTO checklist_results (target_id, checklist_id, item_id, is_checked) VALUES ($1, $2, $3, $4)',
-            [id, clId, itemId, target.checklistResults[clId][itemId] ? 1 : 0]
+            'INSERT INTO checklist_results (target_id, checklist_id, item_id, is_checked, justification, review_status) VALUES ($1, $2, $3, $4, $5, $6)',
+            [id, clId, itemId, isChecked ? 1 : 0, justification, reviewStatus]
           );
         }
       }
