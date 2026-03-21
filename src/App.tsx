@@ -25,6 +25,7 @@ import {
   Sparkles,
   Settings,
   Download,
+  HelpCircle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Checklist, Target, RiskAnalysis, AIModel, ChecklistResult, Theme } from './types';
@@ -723,22 +724,87 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
 }
 
 function DashboardView({ targets, onSelectTarget, onViewAll }: { targets: Target[], onSelectTarget: (t: Target) => void, onViewAll: () => void }) {
+  const [history, setHistory] = useState<any[]>([]);
+
+  const fetchHistory = useCallback(async () => {
+    try {
+      const res = await fetch('/api/history');
+      if (res.ok) {
+        const data = await res.json();
+        setHistory(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
+
   const avgRisk = useMemo(() => {
-    if (targets.length === 0) return 0;
-    return Math.round(targets.reduce((acc, t) => acc + t.riskScore, 0) / targets.length);
+    if (!targets || targets.length === 0) return 0;
+    const sum = targets.reduce((acc, t) => acc + (t.riskScore || 0), 0);
+    return Math.round(sum / targets.length);
   }, [targets]);
 
   const highRiskCount = useMemo(() => {
-    return targets.filter(t => t.riskScore > 70).length;
+    if (!targets) return 0;
+    return targets.filter(t => (t.riskScore || 0) > 70).length;
   }, [targets]);
+
+  const trends = useMemo(() => {
+    if (!history || history.length < 2) return { health: null, targets: null, alerts: null };
+    
+    // history is DESC, so history[0] is latest, history[history.length-1] is oldest
+    const baseline = history.length >= 7 ? history[6] : history[history.length - 1];
+    if (!baseline) return { health: null, targets: null, alerts: null };
+
+    const currentHealth = 100 - avgRisk;
+    const baselineHealth = 100 - (baseline.avg_risk || 0);
+    
+    const healthDiff = currentHealth - baselineHealth;
+    const targetsDiff = (targets?.length || 0) - (baseline.active_targets || 0);
+    const alertsDiff = highRiskCount - (baseline.critical_alerts || 0);
+
+    return {
+      health: healthDiff === 0 ? "Stable" : `${healthDiff > 0 ? '+' : ''}${healthDiff}% from baseline`,
+      targets: targetsDiff === 0 ? "No change" : `${targetsDiff > 0 ? '+' : ''}${targetsDiff} change`,
+      alerts: alertsDiff === 0 ? "No new alerts" : `${alertsDiff > 0 ? '+' : ''}${alertsDiff} vs baseline`
+    };
+  }, [history, avgRisk, targets, highRiskCount]);
 
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard label="Fleet Security Health" value={`${100 - avgRisk}%`} icon={<ShieldCheck className="text-primary" />} trend="+2% from last week" />
-        <StatCard label="Active Targets" value={targets.length.toString()} icon={<TargetIcon className="text-emerald-600" />} trend="+1 this week" />
-        <StatCard label="Critical Alerts" value={highRiskCount.toString()} icon={<AlertTriangle className="text-rose-600" />} trend="Immediate action" />
-        <StatCard label="Security Rank" value={avgRisk < 30 ? 'Sentinel' : avgRisk < 60 ? 'Guardian' : 'Initiate'} icon={<Trophy className="text-amber-500" />} trend="Next: Elite" />
+        <StatCard 
+          label="Fleet Security Health" 
+          value={`${100 - avgRisk}%`} 
+          icon={<ShieldCheck className="text-primary" />} 
+          trend={trends.health || "Calculating..."}
+          description="Overall security posture based on the average risk score of all active targets. Higher is better."
+        />
+        <StatCard 
+          label="Active Targets" 
+          value={targets.length.toString()} 
+          icon={<TargetIcon className="text-emerald-600" />} 
+          trend={trends.targets || "Calculating..."}
+          description="Total number of humanoid units or systems currently being monitored by the security fleet."
+        />
+        <StatCard 
+          label="Critical Alerts" 
+          value={highRiskCount.toString()} 
+          icon={<AlertTriangle className="text-rose-600" />} 
+          trend={trends.alerts || "Calculating..."}
+          description="Number of targets with a risk score above 70, requiring immediate security intervention."
+        />
+        <StatCard 
+          label="Security Rank" 
+          value={avgRisk < 30 ? 'Sentinel' : avgRisk < 60 ? 'Guardian' : 'Initiate'} 
+          icon={<Trophy className="text-amber-500" />} 
+          trend={avgRisk < 30 ? "Elite Status" : "Next: Sentinel"}
+          description="Your fleet's overall security designation based on current risk levels and compliance."
+        />
       </div>
 
       <div className="glass-card rounded-3xl overflow-hidden">
@@ -1427,7 +1493,7 @@ function TargetDetailView({
   );
 }
 
-function StatCard({ label, value, icon, trend }: { label: string, value: string, icon: React.ReactNode, trend?: string }) {
+function StatCard({ label, value, icon, trend, description }: { label: string, value: string, icon: React.ReactNode, trend?: string, description?: string }) {
   return (
     <div className="glass-card p-6 rounded-3xl relative overflow-hidden group">
       <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
@@ -1435,7 +1501,16 @@ function StatCard({ label, value, icon, trend }: { label: string, value: string,
       </div>
       <div className="flex items-center justify-between mb-4">
         <div className="p-3 bg-white/50 rounded-2xl shadow-sm">{icon}</div>
+        {description && (
+          <div className="relative group/info">
+            <HelpCircle className="w-4 h-4 text-slate-300 hover:text-primary transition-colors cursor-help" />
+            <div className="absolute bottom-full right-0 mb-2 w-48 p-3 bg-slate-800 text-white text-[10px] rounded-xl opacity-0 group-hover/info:opacity-100 transition-opacity pointer-events-none z-50 shadow-xl border border-white/10">
+              {description}
+            </div>
+          </div>
+        )}
       </div>
+      
       <p className="text-slate-400 text-xs font-extrabold uppercase tracking-widest">{label}</p>
       <h4 className="text-3xl font-extrabold mt-2 text-slate-800 tracking-tight">{value}</h4>
       {trend && (

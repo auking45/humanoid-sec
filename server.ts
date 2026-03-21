@@ -108,6 +108,14 @@ async function initDb() {
       CONSTRAINT fk_target FOREIGN KEY (target_id) REFERENCES targets(id) ON DELETE CASCADE,
       CONSTRAINT fk_checklist_res FOREIGN KEY (checklist_id) REFERENCES checklists(id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS security_history (
+      id ${DB_TYPE === 'postgres' ? 'SERIAL' : 'INTEGER'} PRIMARY KEY ${DB_TYPE === 'sqlite' ? 'AUTOINCREMENT' : ''},
+      timestamp TEXT NOT NULL,
+      avg_risk INTEGER NOT NULL,
+      active_targets INTEGER NOT NULL,
+      critical_alerts INTEGER NOT NULL
+    );
   `;
 
   if (DB_TYPE === 'postgres') {
@@ -219,6 +227,48 @@ async function initDb() {
         }
       }
     }
+
+    // 4. Seed some history data if empty
+    const historyCountRes = await query('SELECT COUNT(*) as count FROM security_history');
+    if (parseInt(historyCountRes.rows[0].count) === 0) {
+      console.log('Seeding security history...');
+      const now = new Date();
+      for (let i = 7; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        // Randomish data for trend
+        const mockAvgRisk = 20 + Math.floor(Math.random() * 10) - (7 - i);
+        const mockActiveTargets = 1;
+        const mockCriticalAlerts = mockAvgRisk > 70 ? 1 : 0;
+        
+        await query(
+          'INSERT INTO security_history (timestamp, avg_risk, active_targets, critical_alerts) VALUES ($1, $2, $3, $4)',
+          [date.toISOString(), mockAvgRisk, mockActiveTargets, mockCriticalAlerts]
+        );
+      }
+      console.log('Security history seeded successfully.');
+    } else {
+      console.log(`Security history already has ${historyCountRes.rows[0].count} records.`);
+    }
+  }
+}
+
+async function recordSecuritySnapshot() {
+  try {
+    const targetsRes = await query('SELECT risk_score FROM targets');
+    const targets = targetsRes.rows;
+    if (targets.length === 0) return;
+
+    const avgRisk = Math.round(targets.reduce((acc: number, t: any) => acc + t.risk_score, 0) / targets.length);
+    const criticalAlerts = targets.filter((t: any) => t.risk_score > 70).length;
+    const activeTargets = targets.length;
+
+    await query(
+      'INSERT INTO security_history (timestamp, avg_risk, active_targets, critical_alerts) VALUES ($1, $2, $3, $4)',
+      [new Date().toISOString(), avgRisk, activeTargets, criticalAlerts]
+    );
+  } catch (err) {
+    console.error('Failed to record security snapshot:', err);
   }
 }
 
@@ -395,6 +445,7 @@ async function startServer() {
     try {
       const newTarget = req.body;
       await repo.addTarget(newTarget);
+      await recordSecuritySnapshot();
       res.status(201).json(newTarget);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -406,6 +457,7 @@ async function startServer() {
       const { id } = req.params;
       const updatedTarget = req.body;
       await repo.updateTarget(id, updatedTarget);
+      await recordSecuritySnapshot();
       res.json(updatedTarget);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -416,6 +468,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       await repo.deleteTarget(id);
+      await recordSecuritySnapshot();
       res.status(204).send();
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -482,18 +535,29 @@ async function startServer() {
       const checklists = await query('SELECT * FROM checklists');
       const checklistItems = await query('SELECT * FROM checklist_items');
       const checklistResults = await query('SELECT * FROM checklist_results');
+      const history = await query('SELECT * FROM security_history');
 
       const backupData = {
         timestamp: new Date().toISOString(),
         targets: targets.rows,
         checklists: checklists.rows,
         checklistItems: checklistItems.rows,
-        checklistResults: checklistResults.rows
+        checklistResults: checklistResults.rows,
+        history: history.rows
       };
 
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename=security_backup_${new Date().toISOString().split('T')[0]}.json`);
       res.send(JSON.stringify(backupData, null, 2));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/history", async (req, res) => {
+    try {
+      const history = await query('SELECT * FROM security_history ORDER BY timestamp DESC LIMIT 30');
+      res.json(history.rows);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
