@@ -1,6 +1,13 @@
-import { Checklist, Target } from '../types';
+import { Checklist, Target, Theme } from '../types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+const hexToRgb = (hex: string): [number, number, number] => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return [r, g, b];
+};
 
 const getWeightEmoji = (weight: number) => {
   if (weight >= 5) return '🔴 CRITICAL';
@@ -88,12 +95,13 @@ export const downloadMarkdown = (filename: string, content: string) => {
   document.body.removeChild(element);
 };
 
-export const generateChecklistPDF = (checklist: Checklist) => {
+export const generateChecklistPDF = (checklist: Checklist, theme: Theme) => {
   const doc = new jsPDF();
+  const primaryRgb = hexToRgb(theme.primary);
   
   // Header
   doc.setFontSize(22);
-  doc.setTextColor(79, 70, 229); // Indigo-600
+  doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
   doc.text('Security Checklist Report', 14, 22);
   
   doc.setFontSize(16);
@@ -115,7 +123,7 @@ export const generateChecklistPDF = (checklist: Checklist) => {
     }
     
     doc.setFontSize(14);
-    doc.setTextColor(79, 70, 229);
+    doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
     doc.text(cat, 14, currentY);
     currentY += 10;
 
@@ -132,7 +140,7 @@ export const generateChecklistPDF = (checklist: Checklist) => {
       head: [['#', 'Requirement', 'Weight', 'Details']],
       body: tableData,
       theme: 'striped',
-      headStyles: { fillColor: [79, 70, 229] },
+      headStyles: { fillColor: primaryRgb },
       columnStyles: {
         0: { cellWidth: 10 },
         1: { cellWidth: 60 },
@@ -148,11 +156,12 @@ export const generateChecklistPDF = (checklist: Checklist) => {
   doc.save(`${checklist.title.replace(/\s+/g, '_')}_Checklist.pdf`);
 };
 
-export const generateAllChecklistsPDF = (checklists: Checklist[]) => {
+export const generateAllChecklistsPDF = (checklists: Checklist[], theme: Theme) => {
   const doc = new jsPDF();
+  const primaryRgb = hexToRgb(theme.primary);
   
   // Cover Page
-  doc.setFillColor(79, 70, 229);
+  doc.setFillColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
   doc.rect(0, 0, 210, 297, 'F');
   
   doc.setFontSize(32);
@@ -174,7 +183,7 @@ export const generateAllChecklistsPDF = (checklists: Checklist[]) => {
     
     // Header
     doc.setFontSize(22);
-    doc.setTextColor(79, 70, 229);
+    doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
     doc.text(`[${clIdx + 1}] ${cl.title}`, 14, 22);
     
     doc.setFontSize(10);
@@ -191,7 +200,7 @@ export const generateAllChecklistsPDF = (checklists: Checklist[]) => {
       }
       
       doc.setFontSize(14);
-      doc.setTextColor(79, 70, 229);
+      doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
       doc.text(cat, 14, currentY);
       currentY += 10;
       
@@ -208,7 +217,7 @@ export const generateAllChecklistsPDF = (checklists: Checklist[]) => {
         head: [['#', 'Requirement', 'Weight', 'Details']],
         body: tableData,
         theme: 'striped',
-        headStyles: { fillColor: [79, 70, 229] },
+        headStyles: { fillColor: primaryRgb },
         columnStyles: {
           0: { cellWidth: 10 },
           1: { cellWidth: 60 },
@@ -225,13 +234,14 @@ export const generateAllChecklistsPDF = (checklists: Checklist[]) => {
   doc.save(`Full_Security_Checklist.pdf`);
 };
 
-export const generateTargetSecurityReport = (target: Target, checklist: Checklist, aiAnalysis?: any) => {
+export const generateTargetSecurityReport = (target: Target, checklist: Checklist, theme: Theme, aiAnalysis?: any) => {
   const doc = new jsPDF();
+  const primaryRgb = hexToRgb(theme.primary);
   const now = new Date();
   const timestamp = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
   
   // Fancy Header
-  doc.setFillColor(79, 70, 229);
+  doc.setFillColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
   doc.rect(0, 0, 210, 40, 'F');
   
   doc.setFontSize(22);
@@ -276,7 +286,7 @@ export const generateTargetSecurityReport = (target: Target, checklist: Checklis
 
   // Findings Table
   doc.setFontSize(14);
-  doc.setTextColor(79, 70, 229);
+  doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
   doc.text('Detailed Findings', 14, 140);
 
   const results = target.checklistResults[checklist.id] || {};
@@ -307,7 +317,7 @@ export const generateTargetSecurityReport = (target: Target, checklist: Checklis
     head: [['Control', 'Category', 'Weight', 'Result', 'Justification']],
     body: findingsData,
     theme: 'grid',
-    headStyles: { fillColor: [79, 70, 229] },
+    headStyles: { fillColor: primaryRgb },
     columnStyles: {
       0: { cellWidth: 50 },
       1: { cellWidth: 30 },
@@ -321,7 +331,7 @@ export const generateTargetSecurityReport = (target: Target, checklist: Checklis
           data.cell.styles.textColor = [5, 150, 105];
           data.cell.styles.fontStyle = 'bold';
         } else if (data.cell.text[0] === 'EXCEPTED (Approved)') {
-          data.cell.styles.textColor = [79, 70, 229];
+          data.cell.styles.textColor = primaryRgb;
           data.cell.styles.fontStyle = 'bold';
         } else {
           data.cell.styles.textColor = [225, 29, 72];
@@ -337,7 +347,7 @@ export const generateTargetSecurityReport = (target: Target, checklist: Checklis
     if (finalY > 230) doc.addPage();
     
     doc.setFontSize(14);
-    doc.setTextColor(79, 70, 229);
+    doc.setTextColor(primaryRgb[0], primaryRgb[1], primaryRgb[2]);
     doc.text('AI-Powered Recommendations', 14, finalY > 230 ? 20 : finalY);
     
     doc.setFontSize(10);

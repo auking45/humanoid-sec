@@ -27,7 +27,21 @@ import {
   Download,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Checklist, Target, RiskAnalysis, AIModel, ChecklistResult } from './types';
+import { Checklist, Target, RiskAnalysis, AIModel, ChecklistResult, Theme } from './types';
+
+const THEMES: Theme[] = [
+  { id: 'indigo', name: 'Indigo', primary: '#6366F1', primaryDark: '#4F46E5', primaryLight: '#EEF2FF', secondary: '#A855F7' },
+  { id: 'ocean', name: 'Ocean', primary: '#3B82F6', primaryDark: '#2563EB', primaryLight: '#EFF6FF', secondary: '#60A5FA' },
+  { id: 'cyan', name: 'Cyan', primary: '#06B6D4', primaryDark: '#0891B2', primaryLight: '#ECFEFF', secondary: '#22D3EE' },
+  { id: 'teal', name: 'Teal', primary: '#14B8A6', primaryDark: '#0D9488', primaryLight: '#F0FDFA', secondary: '#2DD4BF' },
+  { id: 'emerald', name: 'Emerald', primary: '#10B981', primaryDark: '#059669', primaryLight: '#ECFDF5', secondary: '#059669' },
+  { id: 'amber', name: 'Amber', primary: '#F59E0B', primaryDark: '#D97706', primaryLight: '#FFFBEB', secondary: '#D97706' },
+  { id: 'rose', name: 'Rose', primary: '#F43F5E', primaryDark: '#E11D48', primaryLight: '#FFF1F2', secondary: '#E11D48' },
+  { id: 'fuchsia', name: 'Fuchsia', primary: '#D946EF', primaryDark: '#C026D3', primaryLight: '#FDF4FF', secondary: '#E879F9' },
+  { id: 'violet', name: 'Violet', primary: '#8B5CF6', primaryDark: '#7C3AED', primaryLight: '#F5F3FF', secondary: '#A78BFA' },
+  { id: 'slate', name: 'Slate', primary: '#64748B', primaryDark: '#475569', primaryLight: '#F8FAFC', secondary: '#475569' },
+];
+
 import { analyzeRobotRisk } from './services/aiService';
 import { 
   exportChecklistToMarkdown, 
@@ -55,6 +69,10 @@ const MOCK_CHECKLIST: Checklist = {
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'checklists' | 'targets' | 'settings'>('dashboard');
   const [isAdmin, setIsAdmin] = useState(false);
+  const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem('app-theme');
+    return THEMES.find(t => t.id === saved) || THEMES[0];
+  });
   const [targets, setTargets] = useState<Target[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<Target | null>(null);
@@ -72,6 +90,15 @@ export default function App() {
     description: '',
     items: []
   });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty('--color-primary', currentTheme.primary);
+    root.style.setProperty('--color-primary-dark', currentTheme.primaryDark);
+    root.style.setProperty('--color-primary-light', currentTheme.primaryLight);
+    root.style.setProperty('--color-secondary', currentTheme.secondary);
+    localStorage.setItem('app-theme', currentTheme.id);
+  }, [currentTheme]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -182,10 +209,10 @@ export default function App() {
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 h-full w-64 glass-sidebar z-50">
         <div className="p-6 flex items-center gap-3 border-b border-white/10">
-          <div className="bg-gradient-to-br from-indigo-600 to-violet-600 p-2 rounded-xl shadow-lg shadow-indigo-200">
+          <div className="bg-gradient-to-br from-primary to-secondary p-2 rounded-xl shadow-lg shadow-indigo-200">
             <Shield className="w-6 h-6 text-white" />
           </div>
-          <h1 className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">
+          <h1 className="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
             Humanoid-Sec AI
           </h1>
         </div>
@@ -226,7 +253,7 @@ export default function App() {
             {selectedTarget && (
               <>
                 <ChevronRight className="w-4 h-4 text-slate-400" />
-                <span className="text-indigo-600 font-semibold bg-indigo-50 px-3 py-1 rounded-full text-sm">{selectedTarget.name}</span>
+                <span className="text-primary font-semibold bg-primary-light px-3 py-1 rounded-full text-sm">{selectedTarget.name}</span>
               </>
             )}
           </div>
@@ -238,7 +265,7 @@ export default function App() {
                 placeholder="Search targets..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 bg-white/50 border border-white/60 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-indigo-500/10 transition-all w-64"
+                className="pl-10 pr-4 py-2 bg-white/50 border border-white/60 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all w-64"
               />
             </div>
             <button 
@@ -273,6 +300,7 @@ export default function App() {
                       checklist={selectedChecklist} 
                       onBack={() => setSelectedChecklist(null)} 
                       isAdmin={isAdmin}
+                      currentTheme={currentTheme}
                       onEdit={(cl) => {
                         setNewChecklist(cl);
                         setShowAddChecklistModal(true);
@@ -282,6 +310,7 @@ export default function App() {
                       checklists={checklists} 
                       onSelect={setSelectedChecklist} 
                       isAdmin={isAdmin}
+                      currentTheme={currentTheme}
                       onEdit={(cl) => {
                         setNewChecklist(cl);
                         setShowAddChecklistModal(true);
@@ -306,6 +335,7 @@ export default function App() {
                       checklist={activeChecklist} 
                       allChecklists={checklists}
                       isAdmin={isAdmin}
+                      currentTheme={currentTheme}
                       onChecklistChange={setTargetChecklistId}
                       onBack={() => { setSelectedTarget(null); setTargetChecklistId(null); }} 
                       onDelete={handleDeleteTarget}
@@ -313,7 +343,14 @@ export default function App() {
                     />
                   : <TargetsListView targets={filteredTargets} onSelect={setSelectedTarget} />
               )}
-              {activeTab === 'settings' && <SettingsView isAdmin={isAdmin} setIsAdmin={setIsAdmin} />}
+              {activeTab === 'settings' && (
+                <SettingsView 
+                  isAdmin={isAdmin} 
+                  setIsAdmin={setIsAdmin} 
+                  currentTheme={currentTheme}
+                  onThemeChange={setCurrentTheme}
+                />
+              )}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -384,7 +421,7 @@ export default function App() {
                 </button>
                 <button 
                   onClick={handleAddTarget}
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-all"
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-bold hover:bg-primary-dark transition-all"
                 >
                   Create Target
                 </button>
@@ -429,7 +466,7 @@ export default function App() {
                       value={newChecklist.title}
                       onChange={(e) => setNewChecklist({ ...newChecklist, title: e.target.value })}
                       placeholder="e.g. Humanoid Safety Protocol"
-                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20"
                     />
                   </div>
                   <div className="col-span-2">
@@ -445,13 +482,13 @@ export default function App() {
 
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-extrabold text-indigo-400 uppercase tracking-widest">Checklist Items</h4>
+                    <h4 className="text-xs font-extrabold text-primary uppercase tracking-widest">Checklist Items</h4>
                     <button 
                       onClick={() => setNewChecklist({
                         ...newChecklist,
                         items: [...newChecklist.items, { id: `i${Date.now()}`, text: '', category: 'Software', weight: 3 }]
                       })}
-                      className="text-indigo-600 text-xs font-bold flex items-center gap-1 hover:underline"
+                      className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
                     >
                       <Plus className="w-3 h-3" /> Add Item
                     </button>
@@ -460,7 +497,7 @@ export default function App() {
                   {newChecklist.items.map((item, idx) => (
                     <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                       <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 bg-indigo-600 text-white text-[10px] font-bold rounded-lg flex items-center justify-center shrink-0">
+                        <span className="w-6 h-6 bg-primary text-white text-[10px] font-bold rounded-lg flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
                         <input 
@@ -570,7 +607,7 @@ export default function App() {
                       console.error(e);
                     }
                   }}
-                  className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 transition-all"
+                  className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-bold hover:bg-primary-dark transition-all"
                 >
                   {checklists.some(c => c.id === newChecklist.id) ? 'Update Checklist' : 'Save Checklist'}
                 </button>
@@ -589,7 +626,7 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
         active 
-          ? 'bg-indigo-50 text-indigo-700 font-semibold shadow-sm' 
+          ? 'bg-primary-light text-primary font-semibold shadow-sm' 
           : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
       }`}
     >
@@ -612,7 +649,7 @@ function DashboardView({ targets, onSelectTarget, onViewAll }: { targets: Target
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard label="Fleet Security Health" value={`${100 - avgRisk}%`} icon={<ShieldCheck className="text-indigo-600" />} trend="+2% from last week" />
+        <StatCard label="Fleet Security Health" value={`${100 - avgRisk}%`} icon={<ShieldCheck className="text-primary" />} trend="+2% from last week" />
         <StatCard label="Active Targets" value={targets.length.toString()} icon={<TargetIcon className="text-emerald-600" />} trend="+1 this week" />
         <StatCard label="Critical Alerts" value={highRiskCount.toString()} icon={<AlertTriangle className="text-rose-600" />} trend="Immediate action" />
         <StatCard label="Security Rank" value={avgRisk < 30 ? 'Sentinel' : avgRisk < 60 ? 'Guardian' : 'Initiate'} icon={<Trophy className="text-amber-500" />} trend="Next: Elite" />
@@ -626,7 +663,7 @@ function DashboardView({ targets, onSelectTarget, onViewAll }: { targets: Target
           </div>
           <button 
             onClick={onViewAll}
-            className="text-indigo-600 text-sm font-bold hover:text-indigo-700 bg-indigo-50 px-4 py-2 rounded-xl transition-all"
+            className="text-primary text-sm font-bold hover:text-primary-dark bg-primary-light px-4 py-2 rounded-xl transition-all"
           >
             View All Systems
           </button>
@@ -652,14 +689,14 @@ function DashboardView({ targets, onSelectTarget, onViewAll }: { targets: Target
   );
 }
 
-function ChecklistView({ checklist, onBack, isAdmin, onEdit }: { checklist: Checklist, onBack: () => void, isAdmin: boolean, onEdit: (cl: Checklist) => void }) {
+function ChecklistView({ checklist, onBack, isAdmin, onEdit, currentTheme }: { checklist: Checklist, onBack: () => void, isAdmin: boolean, onEdit: (cl: Checklist) => void, currentTheme: Theme }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
+          <button onClick={onBack} className="text-slate-500 hover:text-primary flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
             <ChevronRight className="w-4 h-4 rotate-180" />
             Back to Checklists
           </button>
@@ -675,7 +712,7 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit }: { checklist: Chec
               MD
             </button>
             <button 
-              onClick={() => generateChecklistPDF(checklist)}
+              onClick={() => generateChecklistPDF(checklist, currentTheme)}
               className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center gap-2"
               title="Export as PDF"
             >
@@ -686,7 +723,7 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit }: { checklist: Chec
         {isAdmin && (
           <button 
             onClick={() => onEdit(checklist)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+            className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-primary-dark transition-all shadow-lg shadow-indigo-100"
           >
             <Settings className="w-4 h-4" />
             Edit Checklist
@@ -695,7 +732,7 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit }: { checklist: Chec
       </div>
       <div className="glass-card p-10 rounded-3xl">
         <div className="flex items-center gap-4 mb-6">
-          <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-100">
+          <div className="bg-primary p-3 rounded-2xl shadow-lg shadow-indigo-100">
             <ClipboardCheck className="w-8 h-8 text-white" />
           </div>
           <div>
@@ -712,13 +749,13 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit }: { checklist: Chec
               className="flex flex-col gap-2 p-6 bg-white/40 rounded-2xl border border-white/60 hover:bg-white/60 transition-all group cursor-pointer"
             >
               <div className="flex items-start gap-5">
-                <span className="bg-indigo-600 w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md group-hover:scale-110 transition-transform">
+                <span className="bg-primary w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold text-white shadow-md group-hover:scale-110 transition-transform">
                   {idx + 1}
                 </span>
                 <div className="flex-1">
                   <p className="font-bold text-slate-800 text-lg">{item.text}</p>
                   <div className="flex items-center gap-4 mt-3">
-                    <span className="text-[10px] uppercase font-extrabold tracking-widest px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg">
+                    <span className="text-[10px] uppercase font-extrabold tracking-widest px-3 py-1 bg-primary-light text-primary rounded-lg">
                       {item.category}
                     </span>
                     <div className="flex items-center gap-1.5">
@@ -737,7 +774,7 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit }: { checklist: Chec
                 <motion.div 
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
-                  className="mt-4 p-4 bg-indigo-50/50 rounded-xl border border-indigo-100 text-sm text-slate-600 leading-relaxed font-medium"
+                  className="mt-4 p-4 bg-primary-light/50 rounded-xl border border-primary-light text-sm text-slate-600 leading-relaxed font-medium"
                 >
                   {item.description}
                 </motion.div>
@@ -750,7 +787,7 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit }: { checklist: Chec
   );
 }
 
-function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin }: { checklists: Checklist[], onSelect: (cl: Checklist) => void, onCreate: () => void, onEdit: (cl: Checklist) => void, isAdmin: boolean }) {
+function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin, currentTheme }: { checklists: Checklist[], onSelect: (cl: Checklist) => void, onCreate: () => void, onEdit: (cl: Checklist) => void, isAdmin: boolean, currentTheme: Theme }) {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -763,15 +800,15 @@ function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin }:
                 const md = exportAllChecklistsToMarkdown(checklists);
                 downloadMarkdown('Full_Security_Checklists', md);
               }}
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-1 transition-colors"
+              className="text-xs font-bold text-slate-400 hover:text-primary flex items-center gap-1 transition-colors"
             >
               <Download className="w-3 h-3" />
               Export All (MD)
             </button>
             <span className="text-slate-200">|</span>
             <button 
-              onClick={() => generateAllChecklistsPDF(checklists)}
-              className="text-xs font-bold text-slate-400 hover:text-indigo-600 flex items-center gap-1 transition-colors"
+              onClick={() => generateAllChecklistsPDF(checklists, currentTheme)}
+              className="text-xs font-bold text-slate-400 hover:text-primary flex items-center gap-1 transition-colors"
             >
               <Download className="w-3 h-3" />
               Export All (PDF)
@@ -793,12 +830,12 @@ function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin }:
         {checklists.map(cl => (
           <div 
             key={cl.id}
-            className="glass-card p-8 rounded-3xl hover:shadow-indigo-100 hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
+            className="glass-card p-8 rounded-3xl hover:shadow-primary-light hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
           >
             <div onClick={() => onSelect(cl)}>
               <div className="flex items-center gap-4 mb-6">
-                <div className="bg-indigo-50 p-4 rounded-2xl group-hover:bg-indigo-600 transition-all duration-300">
-                  <ClipboardCheck className="w-6 h-6 text-indigo-600 group-hover:text-white" />
+                <div className="bg-primary-light p-4 rounded-2xl group-hover:bg-primary transition-all duration-300">
+                  <ClipboardCheck className="w-6 h-6 text-primary group-hover:text-white" />
                 </div>
                 <div>
                   <h4 className="text-xl font-extrabold text-slate-900 tracking-tight">{cl.title}</h4>
@@ -820,13 +857,13 @@ function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin }:
                 {isAdmin && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); onEdit(cl); }}
-                    className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all"
+                    className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-primary hover:bg-primary-light transition-all"
                   >
                     <Settings className="w-5 h-5" />
                   </button>
                 )}
-                <div onClick={() => onSelect(cl)} className="bg-slate-50 p-2 rounded-lg group-hover:bg-indigo-50 transition-colors">
-                  <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-600" />
+                <div onClick={() => onSelect(cl)} className="bg-slate-50 p-2 rounded-lg group-hover:bg-primary-light transition-colors">
+                  <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-primary" />
                 </div>
               </div>
             </div>
@@ -844,13 +881,13 @@ function TargetsListView({ targets, onSelect }: { targets: Target[], onSelect: (
         <div 
           key={target.id}
           onClick={() => onSelect(target)}
-          className="glass-card p-8 rounded-3xl hover:shadow-indigo-100 hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
+          className="glass-card p-8 rounded-3xl hover:shadow-primary-light hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
         >
-          <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-indigo-500/10 transition-colors" />
+          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-primary/10 transition-colors" />
           
           <div className="flex items-center justify-between mb-6">
-            <div className="p-4 bg-indigo-50 rounded-2xl group-hover:bg-indigo-600 transition-all duration-300">
-              <TargetIcon className="w-6 h-6 text-indigo-600 group-hover:text-white" />
+            <div className="p-4 bg-primary-light rounded-2xl group-hover:bg-primary transition-all duration-300">
+              <TargetIcon className="w-6 h-6 text-primary group-hover:text-white" />
             </div>
             <div className={`status-badge ${
               target.riskScore > 70 ? 'bg-rose-50 text-rose-600 border-rose-100' : 
@@ -871,8 +908,8 @@ function TargetsListView({ targets, onSelect }: { targets: Target[], onSelect: (
                 <span className="text-xs text-slate-400 font-bold">%</span>
               </div>
             </div>
-            <div className="bg-slate-50 p-2 rounded-lg group-hover:bg-indigo-50 transition-colors">
-              <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-600" />
+            <div className="bg-slate-50 p-2 rounded-lg group-hover:bg-primary-light transition-colors">
+              <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-primary" />
             </div>
           </div>
         </div>
@@ -889,7 +926,8 @@ function TargetDetailView({
   onChecklistChange,
   onBack, 
   onDelete, 
-  onUpdate 
+  onUpdate,
+  currentTheme
 }: { 
   target: Target, 
   checklist: Checklist, 
@@ -898,7 +936,8 @@ function TargetDetailView({
   onChecklistChange: (id: string) => void,
   onBack: () => void, 
   onDelete: (id: string) => void, 
-  onUpdate: (t: Target) => void 
+  onUpdate: (t: Target) => void,
+  currentTheme: Theme
 }) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<RiskAnalysis | null>(null);
@@ -1002,12 +1041,12 @@ function TargetDetailView({
     <div className="max-w-6xl mx-auto space-y-8 pb-20">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-slate-500 hover:text-indigo-600 flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
+          <button onClick={onBack} className="text-slate-500 hover:text-primary flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
             <ChevronRight className="w-4 h-4 rotate-180" />
             Back to Fleet
           </button>
           <button 
-            onClick={() => generateTargetSecurityReport(target, checklist, analysis)}
+            onClick={() => generateTargetSecurityReport(target, checklist, currentTheme, analysis)}
             className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
           >
             <ClipboardCheck className="w-4 h-4" />
@@ -1034,8 +1073,8 @@ function TargetDetailView({
                   onClick={() => onChecklistChange(cl.id)}
                   className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border-2 ${
                     checklist.id === cl.id 
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-100' 
-                      : 'bg-white text-slate-500 border-slate-100 hover:border-indigo-200'
+                      ? 'bg-primary text-white border-primary shadow-lg shadow-indigo-100' 
+                      : 'bg-white text-slate-500 border-slate-100 hover:border-primary-light'
                   }`}
                 >
                   {cl.title}
@@ -1059,7 +1098,7 @@ function TargetDetailView({
                   <select 
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value as AIModel)}
-                    className="bg-white/50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    className="bg-white/50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary outline-none transition-all"
                   >
                     <option value="gemini-3-flash-preview">Gemini 3 Flash</option>
                     <option value="gpt-4o">GPT-4o (OpenAI)</option>
@@ -1100,8 +1139,8 @@ function TargetDetailView({
                       completed 
                         ? 'border-emerald-200 bg-emerald-50/50 shadow-inner' 
                         : isApproved
-                          ? 'border-indigo-200 bg-indigo-50/50 shadow-inner'
-                          : 'border-slate-100 bg-white/40 hover:border-indigo-200 hover:bg-white/60'
+                          ? 'border-primary-light bg-primary-light/50 shadow-inner'
+                          : 'border-slate-100 bg-white/40 hover:border-primary-light hover:bg-white/60'
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -1111,9 +1150,9 @@ function TargetDetailView({
                         }`}>
                           {completed && <CheckCircle2 className="w-4 h-4 text-white" />}
                         </div>
-                        <span className={`text-lg font-bold ${completed ? 'text-emerald-700' : isApproved ? 'text-indigo-700' : 'text-slate-600'}`}>
+                        <span className={`text-lg font-bold ${completed ? 'text-emerald-700' : isApproved ? 'text-primary' : 'text-slate-600'}`}>
                           {item.text}
-                          {isApproved && <span className="ml-3 text-[10px] bg-indigo-600 text-white px-2 py-0.5 rounded-full uppercase tracking-widest">Exception Approved</span>}
+                          {isApproved && <span className="ml-3 text-[10px] bg-primary text-white px-2 py-0.5 rounded-full uppercase tracking-widest">Exception Approved</span>}
                         </span>
                       </div>
                       <div className="flex items-center gap-4">
@@ -1126,14 +1165,14 @@ function TargetDetailView({
                     {!completed && (
                       <div className="ml-11 space-y-3">
                         <div className="flex items-center gap-2">
-                          <AlertTriangle className={`w-4 h-4 ${isApproved ? 'text-indigo-400' : 'text-amber-500'}`} />
+                          <AlertTriangle className={`w-4 h-4 ${isApproved ? 'text-primary-light' : 'text-amber-500'}`} />
                           <p className="text-xs font-bold text-slate-500">Justification for Exception</p>
                         </div>
                         <textarea
                           value={result.justification}
                           onChange={(e) => updateJustification(item.id, e.target.value)}
                           placeholder="Why is this control not applicable or currently unachievable?"
-                          className="w-full p-3 bg-white/80 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all resize-none h-20"
+                          className="w-full p-3 bg-white/80 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none transition-all resize-none h-20"
                         />
                         
                         {isAdmin && result.justification && (
@@ -1142,7 +1181,7 @@ function TargetDetailView({
                             <button 
                               onClick={() => updateReviewStatus(item.id, 'approved')}
                               className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                                isApproved ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600'
+                                isApproved ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600'
                               }`}
                             >
                               Approve
@@ -1163,7 +1202,7 @@ function TargetDetailView({
                     {item.description && (
                       <div 
                         onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
-                        className="mt-1 ml-11 text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 cursor-pointer w-fit"
+                        className="mt-1 ml-11 text-xs font-semibold text-primary hover:text-primary-dark flex items-center gap-1 cursor-pointer w-fit"
                       >
                         {expandedId === item.id ? 'Hide Details' : 'View Detailed Requirements'}
                       </div>
@@ -1190,13 +1229,13 @@ function TargetDetailView({
               className="glass-card p-10 rounded-3xl space-y-8 relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 p-8 opacity-5">
-                <Shield className="w-32 h-32 text-indigo-600" />
+                <Shield className="w-32 h-32 text-primary" />
               </div>
               
               <div className="flex items-center justify-between relative z-10">
                 <h4 className="text-2xl font-extrabold text-slate-900 flex items-center gap-3">
-                  <div className="bg-indigo-100 p-2 rounded-xl">
-                    <Shield className="w-6 h-6 text-indigo-600" />
+                  <div className="bg-primary-light p-2 rounded-xl">
+                    <Shield className="w-6 h-6 text-primary" />
                   </div>
                   AI Security Intelligence
                 </h4>
@@ -1210,16 +1249,16 @@ function TargetDetailView({
                 </span>
               </div>
               
-              <div className="p-6 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 relative z-10">
+              <div className="p-6 bg-primary-light/50 rounded-2xl border border-primary-light/50 relative z-10">
                 <p className="text-slate-700 leading-relaxed font-medium">{analysis.summary}</p>
               </div>
 
               <div className="space-y-4 relative z-10">
-                <h5 className="text-xs font-extrabold text-indigo-400 uppercase tracking-[0.2em]">Strategic Recommendations</h5>
+                <h5 className="text-xs font-extrabold text-primary uppercase tracking-[0.2em]">Strategic Recommendations</h5>
                 <div className="grid gap-3">
                   {analysis.recommendations.map((rec, i) => (
                     <div key={i} className="flex items-start gap-4 p-4 bg-white/40 rounded-xl border border-white/60">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white text-xs font-bold shrink-0">
                         {i + 1}
                       </div>
                       <p className="text-slate-600 text-sm font-bold leading-relaxed">{rec}</p>
@@ -1331,7 +1370,17 @@ interface TargetRowProps {
   onClick: () => void;
 }
 
-function SettingsView({ isAdmin, setIsAdmin }: { isAdmin: boolean, setIsAdmin: (val: boolean) => void }) {
+function SettingsView({ 
+  isAdmin, 
+  setIsAdmin, 
+  currentTheme, 
+  onThemeChange 
+}: { 
+  isAdmin: boolean, 
+  setIsAdmin: (val: boolean) => void,
+  currentTheme: Theme,
+  onThemeChange: (theme: Theme) => void
+}) {
   const [aiStatus, setAiStatus] = useState({
     gemini: 'Connected',
     openai: 'Not Configured',
@@ -1343,7 +1392,7 @@ function SettingsView({ isAdmin, setIsAdmin }: { isAdmin: boolean, setIsAdmin: (
       <div className="glass-card p-10 rounded-3xl">
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-4">
-            <div className="bg-indigo-600 p-3 rounded-2xl shadow-lg shadow-indigo-100">
+            <div className="bg-primary p-3 rounded-2xl shadow-lg shadow-indigo-100">
               <Settings className="w-8 h-8 text-white" />
             </div>
             <div>
@@ -1353,7 +1402,7 @@ function SettingsView({ isAdmin, setIsAdmin }: { isAdmin: boolean, setIsAdmin: (
           </div>
           <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isAdmin ? 'bg-indigo-600 text-white' : 'bg-white text-slate-400 border border-slate-200 shadow-sm'}`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isAdmin ? 'bg-primary text-white' : 'bg-white text-slate-400 border border-slate-200 shadow-sm'}`}>
                 <Shield className="w-5 h-5" />
               </div>
               <div>
@@ -1363,7 +1412,7 @@ function SettingsView({ isAdmin, setIsAdmin }: { isAdmin: boolean, setIsAdmin: (
             </div>
             <button 
               onClick={() => setIsAdmin(!isAdmin)}
-              className={`w-14 h-7 rounded-full transition-all relative ${isAdmin ? 'bg-indigo-600' : 'bg-slate-200'}`}
+              className={`w-14 h-7 rounded-full transition-all relative ${isAdmin ? 'bg-primary' : 'bg-slate-200'}`}
             >
               <div className={`absolute top-1 w-5 h-5 bg-white rounded-full shadow-md transition-all ${isAdmin ? 'left-8' : 'left-1'}`} />
             </button>
@@ -1372,10 +1421,35 @@ function SettingsView({ isAdmin, setIsAdmin }: { isAdmin: boolean, setIsAdmin: (
 
         <div className="space-y-10">
           <section>
-            <h4 className="text-xs font-extrabold text-indigo-400 uppercase tracking-[0.2em] mb-6">AI Engine Integration</h4>
+            <h4 className="text-xs font-extrabold text-primary uppercase tracking-[0.2em] mb-6">Visual Theme</h4>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {THEMES.map((theme) => (
+                <button
+                  key={theme.id}
+                  onClick={() => onThemeChange(theme)}
+                  className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
+                    currentTheme.id === theme.id 
+                      ? 'border-primary bg-primary-light/50' 
+                      : 'border-slate-100 bg-white/40 hover:border-primary/30'
+                  }`}
+                >
+                  <div 
+                    className="w-10 h-10 rounded-xl shadow-inner" 
+                    style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` }}
+                  />
+                  <span className={`text-xs font-bold ${currentTheme.id === theme.id ? 'text-primary' : 'text-slate-500'}`}>
+                    {theme.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="pt-10 border-t border-slate-100">
+            <h4 className="text-xs font-extrabold text-primary uppercase tracking-[0.2em] mb-6">AI Engine Integration</h4>
             <div className="grid gap-4">
               {[
-                { name: 'Gemini 3 Flash', id: 'gemini', provider: 'Google', status: aiStatus.gemini, icon: <Sparkles className="text-indigo-600" /> },
+                { name: 'Gemini 3 Flash', id: 'gemini', provider: 'Google', status: aiStatus.gemini, icon: <Sparkles className="text-primary" /> },
                 { name: 'GPT-4o', id: 'openai', provider: 'OpenAI', status: aiStatus.openai, icon: <Brain className="text-emerald-600" /> },
                 { name: 'Claude 3.5 Sonnet', id: 'anthropic', provider: 'Anthropic', status: aiStatus.anthropic, icon: <Activity className="text-amber-600" /> }
               ].map((engine) => (
@@ -1398,7 +1472,7 @@ function SettingsView({ isAdmin, setIsAdmin }: { isAdmin: boolean, setIsAdmin: (
                       {engine.status}
                     </span>
                     {engine.status !== 'Connected' && (
-                      <button className="text-indigo-600 text-xs font-extrabold hover:underline">
+                      <button className="text-primary text-xs font-extrabold hover:underline">
                         Configure API Key
                       </button>
                     )}
@@ -1412,7 +1486,7 @@ function SettingsView({ isAdmin, setIsAdmin }: { isAdmin: boolean, setIsAdmin: (
           </section>
 
           <section className="pt-10 border-t border-slate-100">
-            <h4 className="text-xs font-extrabold text-indigo-400 uppercase tracking-[0.2em] mb-6">Fleet Management</h4>
+            <h4 className="text-xs font-extrabold text-primary uppercase tracking-[0.2em] mb-6">Fleet Management</h4>
             <div className="p-8 bg-slate-50 rounded-2xl border border-slate-100 text-center">
               <p className="text-slate-500 font-medium">Additional fleet configuration options will be available in future updates.</p>
             </div>
@@ -1433,7 +1507,7 @@ const TargetRow: React.FC<TargetRowProps> = ({ name, type, risk, status, onClick
   return (
     <div onClick={onClick} className="p-6 hover:bg-white/50 transition-all flex items-center justify-between cursor-pointer group">
       <div className="flex items-center gap-6">
-        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-indigo-600 transition-all duration-300">
+        <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-primary transition-all duration-300">
           <TargetIcon className="w-6 h-6 text-slate-400 group-hover:text-white" />
         </div>
         <div>
@@ -1449,8 +1523,8 @@ const TargetRow: React.FC<TargetRowProps> = ({ name, type, risk, status, onClick
         <span className={`status-badge ${statusColor}`}>
           {status}
         </span>
-        <div className="bg-slate-50 p-2 rounded-lg group-hover:bg-indigo-50 transition-colors">
-          <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-indigo-600" />
+        <div className="bg-slate-50 p-2 rounded-lg group-hover:bg-primary-light transition-colors">
+          <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-primary" />
         </div>
       </div>
     </div>

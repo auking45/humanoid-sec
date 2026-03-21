@@ -3,6 +3,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+export interface Theme {
+  id: string;
+  name: string;
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  secondary: string;
+}
+
 export interface ChecklistItem {
   id: string;
   text: string;
