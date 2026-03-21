@@ -2,9 +2,9 @@
   "targets": [
     {
       "id": "t1",
-      "name": "Humanoid Unit H1-Alpha",
+      "name": "Sample Humanoid Unit H1-Alpha",
       "type": "Humanoid",
-      "description": "Primary humanoid unit for research and development.",
+      "description": "A sample humanoid unit used for initial security assessment and baseline testing.",
       "checklistResults": {
         "cl-sys": {
           "sys-01": true,
@@ -13,20 +13,6 @@
       },
       "riskScore": 15,
       "lastAnalyzed": "2026-03-21"
-    },
-    {
-      "id": "t2",
-      "name": "Humanoid Unit H1-Beta",
-      "type": "Humanoid",
-      "description": "Secondary humanoid unit for testing cloud communication.",
-      "checklistResults": {
-        "cl-comm": {
-          "com-01": false,
-          "com-03": false
-        }
-      },
-      "riskScore": 65,
-      "lastAnalyzed": "2026-03-20"
     }
   ]
 }
