@@ -4,11 +4,11 @@
  */
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { 
-  Shield, 
-  LayoutDashboard, 
-  ClipboardCheck, 
-  Target as TargetIcon, 
+import {
+  Shield,
+  LayoutDashboard,
+  ClipboardCheck,
+  Target as TargetIcon,
   AlertTriangle,
   Plus,
   ChevronRight,
@@ -44,14 +44,35 @@ const THEMES: Theme[] = [
 ];
 
 import { analyzeRobotRisk } from './services/aiService';
-import { 
-  exportChecklistToMarkdown, 
+import {
+  exportChecklistToMarkdown,
   exportAllChecklistsToMarkdown,
-  downloadMarkdown, 
-  generateChecklistPDF, 
+  downloadMarkdown,
+  generateChecklistPDF,
   generateAllChecklistsPDF,
-  generateTargetSecurityReport 
+  generateTargetSecurityReport
 } from './services/reportingService';
+
+const calculateGlobalRiskScore = (results: Record<string, Record<string, any>>, allChecklists: Checklist[]) => {
+  let totalWeight = 0;
+  let failedWeight = 0;
+
+  allChecklists.forEach(cl => {
+    const clResults = results[cl.id] || {};
+    cl.items.forEach(item => {
+      totalWeight += item.weight;
+      const res = clResults[item.id];
+      const isCompleted = typeof res === 'boolean' ? res : res?.checked;
+      const isApproved = typeof res === 'object' ? res?.reviewStatus === 'approved' : false;
+
+      if (!isCompleted && !isApproved) {
+        failedWeight += item.weight;
+      }
+    });
+  });
+
+  return totalWeight > 0 ? Math.round((failedWeight / totalWeight) * 100) : 0;
+};
 
 const MOCK_CHECKLIST: Checklist = {
   id: 'cl-1',
@@ -109,13 +130,19 @@ export default function App() {
         fetch('/api/targets'),
         fetch('/api/checklists')
       ]);
-      
+
       if (targetsRes.ok && checklistsRes.ok) {
         const [targetsData, checklistsData] = await Promise.all([
           targetsRes.json(),
           checklistsRes.json()
         ]);
-        setTargets(targetsData);
+
+        const recalculatedTargets = targetsData.map((t: Target) => ({
+          ...t,
+          riskScore: calculateGlobalRiskScore(t.checklistResults, checklistsData)
+        }));
+
+        setTargets(recalculatedTargets);
         setChecklists(checklistsData);
       }
     } catch (error) {
@@ -136,7 +163,7 @@ export default function App() {
   }, [checklists, targetChecklistId]);
 
   const filteredTargets = useMemo(() => {
-    return targets.filter(t => 
+    return targets.filter(t =>
       t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.type.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -149,10 +176,10 @@ export default function App() {
       type: newTarget.type,
       description: newTarget.description,
       checklistResults: {},
-      riskScore: 0,
+      riskScore: checklists.length > 0 ? 100 : 0,
       lastAnalyzed: new Date().toISOString().split('T')[0]
     };
-    
+
     try {
       const response = await fetch('/api/targets', {
         method: 'POST',
@@ -220,30 +247,30 @@ export default function App() {
             Humanoid-Sec AI
           </h1>
         </div>
-        
+
         <nav className="p-4 space-y-2">
-          <NavItem 
-            icon={<LayoutDashboard className="w-5 h-5" />} 
-            label="Dashboard" 
-            active={activeTab === 'dashboard'} 
+          <NavItem
+            icon={<LayoutDashboard className="w-5 h-5" />}
+            label="Dashboard"
+            active={activeTab === 'dashboard'}
             onClick={() => { setActiveTab('dashboard'); setSelectedTarget(null); }}
           />
-          <NavItem 
-            icon={<ClipboardCheck className="w-5 h-5" />} 
-            label="Checklists" 
-            active={activeTab === 'checklists'} 
+          <NavItem
+            icon={<ClipboardCheck className="w-5 h-5" />}
+            label="Checklists"
+            active={activeTab === 'checklists'}
             onClick={() => { setActiveTab('checklists'); setSelectedTarget(null); }}
           />
-          <NavItem 
-            icon={<TargetIcon className="w-5 h-5" />} 
-            label="Targets" 
-            active={activeTab === 'targets'} 
+          <NavItem
+            icon={<TargetIcon className="w-5 h-5" />}
+            label="Targets"
+            active={activeTab === 'targets'}
             onClick={() => { setActiveTab('targets'); setSelectedTarget(null); }}
           />
-          <NavItem 
-            icon={<Settings className="w-5 h-5" />} 
-            label="Settings" 
-            active={activeTab === 'settings'} 
+          <NavItem
+            icon={<Settings className="w-5 h-5" />}
+            label="Settings"
+            active={activeTab === 'settings'}
             onClick={() => { setActiveTab('settings'); setSelectedTarget(null); }}
           />
         </nav>
@@ -264,15 +291,15 @@ export default function App() {
           <div className="flex items-center gap-4">
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input 
-                type="text" 
-                placeholder="Search targets..." 
+              <input
+                type="text"
+                placeholder="Search targets..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 bg-white/50 border border-white/60 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all w-64"
               />
             </div>
-            <button 
+            <button
               onClick={() => setShowAddModal(true)}
               className="btn-primary px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2"
             >
@@ -292,65 +319,65 @@ export default function App() {
               transition={{ duration: 0.2 }}
             >
               {activeTab === 'dashboard' && (
-                <DashboardView 
+                <DashboardView
                   targets={targets}
-                  onSelectTarget={(t) => { setSelectedTarget(t); setActiveTab('targets'); }} 
+                  onSelectTarget={(t) => { setSelectedTarget(t); setActiveTab('targets'); }}
                   onViewAll={() => setActiveTab('targets')}
                 />
               )}
               {activeTab === 'checklists' && (
-                selectedChecklist 
-                  ? <ChecklistView 
-                      checklist={selectedChecklist} 
-                      onBack={() => setSelectedChecklist(null)} 
-                      isAdmin={isAdmin}
-                      currentTheme={currentTheme}
-                      onEdit={(cl) => {
-                        setNewChecklist(cl);
-                        setShowAddChecklistModal(true);
-                      }}
-                    />
-                  : <ChecklistsListView 
-                      checklists={checklists} 
-                      onSelect={setSelectedChecklist} 
-                      isAdmin={isAdmin}
-                      currentTheme={currentTheme}
-                      onEdit={(cl) => {
-                        setNewChecklist(cl);
-                        setShowAddChecklistModal(true);
-                      }}
-                      onCreate={() => {
-                        setNewChecklist({
-                          id: `cl-${Date.now()}`,
-                          title: '',
-                          description: '',
-                          items: [
-                            { id: 'i1', text: '', category: 'Software', weight: 3 }
-                          ]
-                        });
-                        setShowAddChecklistModal(true);
-                      }} 
-                    />
+                selectedChecklist
+                  ? <ChecklistView
+                    checklist={selectedChecklist}
+                    onBack={() => setSelectedChecklist(null)}
+                    isAdmin={isAdmin}
+                    currentTheme={currentTheme}
+                    onEdit={(cl) => {
+                      setNewChecklist(cl);
+                      setShowAddChecklistModal(true);
+                    }}
+                  />
+                  : <ChecklistsListView
+                    checklists={checklists}
+                    onSelect={setSelectedChecklist}
+                    isAdmin={isAdmin}
+                    currentTheme={currentTheme}
+                    onEdit={(cl) => {
+                      setNewChecklist(cl);
+                      setShowAddChecklistModal(true);
+                    }}
+                    onCreate={() => {
+                      setNewChecklist({
+                        id: `cl-${Date.now()}`,
+                        title: '',
+                        description: '',
+                        items: [
+                          { id: 'i1', text: '', category: 'Software', weight: 3 }
+                        ]
+                      });
+                      setShowAddChecklistModal(true);
+                    }}
+                  />
               )}
               {activeTab === 'targets' && (
                 selectedTarget && activeChecklist
-                  ? <TargetDetailView 
-                      target={selectedTarget} 
-                      checklist={activeChecklist} 
-                      allChecklists={checklists}
-                      isAdmin={isAdmin}
-                      currentTheme={currentTheme}
-                      onChecklistChange={setTargetChecklistId}
-                      onBack={() => { setSelectedTarget(null); setTargetChecklistId(null); }} 
-                      onDelete={handleDeleteTarget}
-                      onUpdate={handleUpdateTarget}
-                    />
+                  ? <TargetDetailView
+                    target={selectedTarget}
+                    checklist={activeChecklist}
+                    allChecklists={checklists}
+                    isAdmin={isAdmin}
+                    currentTheme={currentTheme}
+                    onChecklistChange={setTargetChecklistId}
+                    onBack={() => { setSelectedTarget(null); setTargetChecklistId(null); }}
+                    onDelete={handleDeleteTarget}
+                    onUpdate={handleUpdateTarget}
+                  />
                   : <TargetsListView targets={filteredTargets} onSelect={setSelectedTarget} />
               )}
               {activeTab === 'settings' && (
-                <SettingsView 
-                  isAdmin={isAdmin} 
-                  setIsAdmin={setIsAdmin} 
+                <SettingsView
+                  isAdmin={isAdmin}
+                  setIsAdmin={setIsAdmin}
                   currentTheme={currentTheme}
                   onThemeChange={setCurrentTheme}
                   onSeed={() => setShowSeedModal(true)}
@@ -362,7 +389,7 @@ export default function App() {
 
         <AnimatePresence>
           {showSeedModal && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -384,21 +411,21 @@ export default function App() {
                   </p>
                 </div>
                 <div className="p-8 bg-slate-50 flex gap-4">
-                  <button 
+                  <button
                     disabled={isSeeding}
                     onClick={() => !isSeeding && setShowSeedModal(false)}
                     className="flex-1 px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-100 transition-all disabled:opacity-50"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     disabled={isSeeding}
                     onClick={async () => {
                       if (isSeeding) return;
                       setIsSeeding(true);
                       console.log("Starting database seeding...");
                       try {
-                        const res = await fetch('/api/seed', { 
+                        const res = await fetch('/api/seed', {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' }
                         });
@@ -423,9 +450,8 @@ export default function App() {
                         setShowSeedModal(false);
                       }
                     }}
-                    className={`flex-1 px-6 py-3 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${
-                      isSeeding ? 'bg-slate-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark shadow-primary/20 cursor-pointer'
-                    }`}
+                    className={`flex-1 px-6 py-3 text-white rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 ${isSeeding ? 'bg-slate-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-dark shadow-primary/20 cursor-pointer'
+                      }`}
                   >
                     {isSeeding ? (
                       <>
@@ -447,14 +473,14 @@ export default function App() {
       <AnimatePresence>
         {showAddModal && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowAddModal(false)}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -467,8 +493,8 @@ export default function App() {
               <div className="p-6 space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Target Name</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={newTarget.name}
                     onChange={(e) => setNewTarget({ ...newTarget, name: e.target.value })}
                     placeholder="e.g. Warehouse AGV #1"
@@ -477,7 +503,7 @@ export default function App() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Robot Type</label>
-                  <select 
+                  <select
                     value={newTarget.type}
                     onChange={(e) => setNewTarget({ ...newTarget, type: e.target.value })}
                     className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
@@ -491,7 +517,7 @@ export default function App() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</label>
-                  <textarea 
+                  <textarea
                     value={newTarget.description}
                     onChange={(e) => setNewTarget({ ...newTarget, description: e.target.value })}
                     placeholder="Describe the robot's role and environment..."
@@ -500,13 +526,13 @@ export default function App() {
                 </div>
               </div>
               <div className="p-6 bg-slate-50 flex gap-3">
-                <button 
+                <button
                   onClick={() => setShowAddModal(false)}
                   className="flex-1 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold hover:bg-slate-100 transition-all"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   onClick={handleAddTarget}
                   className="flex-1 px-4 py-2 bg-primary text-white rounded-lg font-bold hover:bg-primary-dark transition-all"
                 >
@@ -522,14 +548,14 @@ export default function App() {
       <AnimatePresence>
         {showAddChecklistModal && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowAddChecklistModal(false)}
               className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -548,8 +574,8 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2">
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Checklist Title</label>
-                    <input 
-                      type="text" 
+                    <input
+                      type="text"
                       value={newChecklist.title}
                       onChange={(e) => setNewChecklist({ ...newChecklist, title: e.target.value })}
                       placeholder="e.g. Humanoid Safety Protocol"
@@ -558,7 +584,7 @@ export default function App() {
                   </div>
                   <div className="col-span-2">
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Description</label>
-                    <textarea 
+                    <textarea
                       value={newChecklist.description}
                       onChange={(e) => setNewChecklist({ ...newChecklist, description: e.target.value })}
                       placeholder="What does this checklist cover?"
@@ -570,7 +596,7 @@ export default function App() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-extrabold text-primary uppercase tracking-widest">Checklist Items</h4>
-                    <button 
+                    <button
                       onClick={() => setNewChecklist({
                         ...newChecklist,
                         items: [...newChecklist.items, { id: `i${Date.now()}`, text: '', category: 'Software', weight: 3 }]
@@ -580,14 +606,14 @@ export default function App() {
                       <Plus className="w-3 h-3" /> Add Item
                     </button>
                   </div>
-                  
+
                   {newChecklist.items.map((item, idx) => (
                     <div key={idx} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
                       <div className="flex items-center gap-3">
                         <span className="w-6 h-6 bg-primary text-white text-[10px] font-bold rounded-lg flex items-center justify-center shrink-0">
                           {idx + 1}
                         </span>
-                        <input 
+                        <input
                           type="text"
                           value={item.text}
                           onChange={(e) => {
@@ -598,7 +624,7 @@ export default function App() {
                           placeholder="Security control text..."
                           className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-bold text-slate-700 p-0"
                         />
-                        <button 
+                        <button
                           onClick={() => {
                             const newItems = newChecklist.items.filter((_, i) => i !== idx);
                             setNewChecklist({ ...newChecklist, items: newItems });
@@ -610,7 +636,7 @@ export default function App() {
                       </div>
                       <div>
                         <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Detailed Requirements</label>
-                        <textarea 
+                        <textarea
                           value={item.description || ''}
                           onChange={(e) => {
                             const newItems = [...newChecklist.items];
@@ -624,7 +650,7 @@ export default function App() {
                       <div className="flex items-center gap-4">
                         <div className="flex-1">
                           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label>
-                          <select 
+                          <select
                             value={item.category}
                             onChange={(e) => {
                               const newItems = [...newChecklist.items];
@@ -645,7 +671,7 @@ export default function App() {
                         </div>
                         <div className="w-24">
                           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Weight (1-5)</label>
-                          <input 
+                          <input
                             type="number"
                             min="1"
                             max="5"
@@ -664,13 +690,13 @@ export default function App() {
                 </div>
               </div>
               <div className="p-6 bg-slate-50 flex gap-3">
-                <button 
+                <button
                   onClick={() => setShowAddChecklistModal(false)}
                   className="flex-1 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg font-bold hover:bg-slate-100 transition-all"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   onClick={async () => {
                     try {
                       const isEdit = checklists.some(c => c.id === newChecklist.id);
@@ -709,13 +735,12 @@ export default function App() {
 
 function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
   return (
-    <button 
+    <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-        active 
-          ? 'bg-primary-light text-primary font-semibold shadow-sm' 
-          : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-      }`}
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${active
+        ? 'bg-primary-light text-primary font-semibold shadow-sm'
+        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+        }`}
     >
       {icon}
       <span>{label}</span>
@@ -754,15 +779,20 @@ function DashboardView({ targets, onSelectTarget, onViewAll }: { targets: Target
   }, [targets]);
 
   const trends = useMemo(() => {
-    if (!history || history.length < 2) return { health: null, targets: null, alerts: null };
-    
+    if (!history || history.length === 0) {
+      return { health: "No prior data", targets: "No prior data", alerts: "No prior data" };
+    }
+    if (history.length === 1) {
+      return { health: "Baseline established", targets: "Baseline established", alerts: "Baseline established" };
+    }
+
     // history is DESC, so history[0] is latest, history[history.length-1] is oldest
     const baseline = history.length >= 7 ? history[6] : history[history.length - 1];
-    if (!baseline) return { health: null, targets: null, alerts: null };
+    if (!baseline) return { health: "Data unavailable", targets: "Data unavailable", alerts: "Data unavailable" };
 
     const currentHealth = 100 - avgRisk;
     const baselineHealth = 100 - (baseline.avg_risk || 0);
-    
+
     const healthDiff = currentHealth - baselineHealth;
     const targetsDiff = (targets?.length || 0) - (baseline.active_targets || 0);
     const alertsDiff = highRiskCount - (baseline.critical_alerts || 0);
@@ -777,32 +807,37 @@ function DashboardView({ targets, onSelectTarget, onViewAll }: { targets: Target
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          label="Fleet Security Health" 
-          value={`${100 - avgRisk}%`} 
-          icon={<ShieldCheck className="text-primary" />} 
-          trend={trends.health || "Calculating..."}
+        <StatCard
+          label="Fleet Security Health"
+          value={`${100 - avgRisk}%`}
+          icon={<ShieldCheck className="text-primary" />}
+          trend={trends.health}
           description="Overall security posture based on the average risk score of all active targets. Higher is better."
         />
-        <StatCard 
-          label="Active Targets" 
-          value={targets.length.toString()} 
-          icon={<TargetIcon className="text-emerald-600" />} 
-          trend={trends.targets || "Calculating..."}
+        <StatCard
+          label="Active Targets"
+          value={targets.length.toString()}
+          icon={<TargetIcon className="text-emerald-600" />}
+          trend={trends.targets}
           description="Total number of humanoid units or systems currently being monitored by the security fleet."
         />
-        <StatCard 
-          label="Critical Alerts" 
-          value={highRiskCount.toString()} 
-          icon={<AlertTriangle className="text-rose-600" />} 
-          trend={trends.alerts || "Calculating..."}
+        <StatCard
+          label="Critical Alerts"
+          value={highRiskCount.toString()}
+          icon={<AlertTriangle className="text-rose-600" />}
+          trend={trends.alerts}
           description="Number of targets with a risk score above 70, requiring immediate security intervention."
         />
-        <StatCard 
-          label="Security Rank" 
-          value={avgRisk < 30 ? 'Sentinel' : avgRisk < 60 ? 'Guardian' : 'Initiate'} 
-          icon={<Trophy className="text-amber-500" />} 
-          trend={avgRisk < 30 ? "Elite Status" : "Next: Sentinel"}
+        <StatCard
+          label="Security Rank"
+          value={targets.length === 0 ? 'Unranked' : avgRisk < 30 ? 'Sentinel' : avgRisk < 60 ? 'Guardian' : 'Initiate'}
+          icon={<Trophy className={
+            targets.length === 0 ? "text-slate-300" :
+              avgRisk < 30 ? "text-amber-400" : // Sentinel: Gold
+                avgRisk < 60 ? "text-slate-400" : // Guardian: Silver
+                  "text-amber-700"                  // Initiate: Bronze
+          } />}
+          trend={targets.length === 0 ? "No active targets" : avgRisk < 30 ? "Elite Status" : "Next: Sentinel"}
           description="Your fleet's overall security designation based on current risk levels and compliance."
         />
       </div>
@@ -813,7 +848,7 @@ function DashboardView({ targets, onSelectTarget, onViewAll }: { targets: Target
             <h3 className="font-extrabold text-xl text-slate-800">Security Fleet Overview</h3>
             <p className="text-slate-500 text-sm mt-1">Real-time risk assessment of your autonomous fleet.</p>
           </div>
-          <button 
+          <button
             onClick={onViewAll}
             className="text-primary text-sm font-bold hover:text-primary-dark bg-primary-light px-4 py-2 rounded-xl transition-all"
           >
@@ -823,12 +858,12 @@ function DashboardView({ targets, onSelectTarget, onViewAll }: { targets: Target
         <div className="divide-y divide-white/20">
           {targets.length > 0 ? (
             targets.slice(0, 5).map(target => (
-              <TargetRow 
+              <TargetRow
                 key={target.id}
-                name={target.name} 
-                type={target.type} 
-                risk={target.riskScore} 
-                status={target.riskScore > 70 ? 'High' : target.riskScore > 40 ? 'Medium' : 'Low'} 
+                name={target.name}
+                type={target.type}
+                risk={target.riskScore}
+                status={target.riskScore > 70 ? 'High' : target.riskScore > 40 ? 'Medium' : 'Low'}
                 onClick={() => onSelectTarget(target)}
               />
             ))
@@ -853,7 +888,7 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit, currentTheme }: { c
             Back to Checklists
           </button>
           <div className="flex items-center gap-2">
-            <button 
+            <button
               onClick={() => {
                 const md = exportChecklistToMarkdown(checklist);
                 downloadMarkdown(checklist.title, md);
@@ -863,7 +898,7 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit, currentTheme }: { c
             >
               MD
             </button>
-            <button 
+            <button
               onClick={() => generateChecklistPDF(checklist, currentTheme)}
               className="px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-200 transition-all flex items-center gap-2"
               title="Export as PDF"
@@ -873,7 +908,7 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit, currentTheme }: { c
           </div>
         </div>
         {isAdmin && (
-          <button 
+          <button
             onClick={() => onEdit(checklist)}
             className="px-4 py-2 bg-primary text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-primary-dark transition-all shadow-lg shadow-indigo-100"
           >
@@ -892,11 +927,11 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit, currentTheme }: { c
             <p className="text-slate-500 font-medium mt-1">{checklist.description}</p>
           </div>
         </div>
-        
+
         <div className="mt-10 space-y-4">
           {checklist.items.map((item, idx) => (
-            <div 
-              key={item.id} 
+            <div
+              key={item.id}
               onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
               className="flex flex-col gap-2 p-6 bg-white/40 rounded-2xl border border-white/60 hover:bg-white/60 transition-all group cursor-pointer"
             >
@@ -923,7 +958,7 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit, currentTheme }: { c
                 </div>
               </div>
               {expandedId === item.id && item.description && (
-                <motion.div 
+                <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   className="mt-4 p-4 bg-primary-light/50 rounded-xl border border-primary-light text-sm text-slate-600 leading-relaxed font-medium"
@@ -947,7 +982,7 @@ function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin, c
           <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">Security Checklists</h3>
           <p className="text-slate-500 font-medium mt-1">Standardized security controls for different robot classes.</p>
           <div className="flex items-center gap-2 mt-3">
-            <button 
+            <button
               onClick={() => {
                 const md = exportAllChecklistsToMarkdown(checklists);
                 downloadMarkdown('Full_Security_Checklists', md);
@@ -958,7 +993,7 @@ function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin, c
               Export All (MD)
             </button>
             <span className="text-slate-200">|</span>
-            <button 
+            <button
               onClick={() => generateAllChecklistsPDF(checklists, currentTheme)}
               className="text-xs font-bold text-slate-400 hover:text-primary flex items-center gap-1 transition-colors"
             >
@@ -968,7 +1003,7 @@ function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin, c
           </div>
         </div>
         {isAdmin && (
-          <button 
+          <button
             onClick={onCreate}
             className="btn-primary px-6 py-3 rounded-2xl text-sm font-extrabold flex items-center gap-3"
           >
@@ -980,7 +1015,7 @@ function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin, c
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         {checklists.map(cl => (
-          <div 
+          <div
             key={cl.id}
             className="glass-card p-8 rounded-3xl hover:shadow-primary-light hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
           >
@@ -996,7 +1031,7 @@ function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin, c
               </div>
               <p className="text-slate-500 text-sm font-medium leading-relaxed">{cl.description}</p>
             </div>
-            
+
             <div className="mt-8 flex items-center justify-between">
               <div className="flex -space-x-2">
                 {Array.from(new Set(cl.items.map(i => i.category))).map(cat => (
@@ -1007,7 +1042,7 @@ function ChecklistsListView({ checklists, onSelect, onCreate, onEdit, isAdmin, c
               </div>
               <div className="flex items-center gap-2">
                 {isAdmin && (
-                  <button 
+                  <button
                     onClick={(e) => { e.stopPropagation(); onEdit(cl); }}
                     className="p-2 bg-slate-50 rounded-lg text-slate-400 hover:text-primary hover:bg-primary-light transition-all"
                   >
@@ -1030,28 +1065,27 @@ function TargetsListView({ targets, onSelect }: { targets: Target[], onSelect: (
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {targets.map(target => (
-        <div 
+        <div
           key={target.id}
           onClick={() => onSelect(target)}
           className="glass-card p-8 rounded-3xl hover:shadow-primary-light hover:shadow-2xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
         >
           <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full -mr-8 -mt-8 group-hover:bg-primary/10 transition-colors" />
-          
+
           <div className="flex items-center justify-between mb-6">
             <div className="p-4 bg-primary-light rounded-2xl group-hover:bg-primary transition-all duration-300">
               <TargetIcon className="w-6 h-6 text-primary group-hover:text-white" />
             </div>
-            <div className={`status-badge ${
-              target.riskScore > 70 ? 'bg-rose-50 text-rose-600 border-rose-100' : 
+            <div className={`status-badge ${target.riskScore > 70 ? 'bg-rose-50 text-rose-600 border-rose-100' :
               target.riskScore > 40 ? 'bg-amber-50 text-amber-600 border-amber-100' :
-              'bg-emerald-50 text-emerald-600 border-emerald-100'
-            }`}>
+                'bg-emerald-50 text-emerald-600 border-emerald-100'
+              }`}>
               {target.riskScore > 70 ? 'Critical' : target.riskScore > 40 ? 'Warning' : 'Secure'}
             </div>
           </div>
           <h4 className="text-xl font-extrabold text-slate-900 tracking-tight">{target.name}</h4>
           <p className="text-sm text-slate-500 font-medium mt-1">{target.type}</p>
-          
+
           <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
             <div>
               <p className="text-[10px] text-slate-400 uppercase font-extrabold tracking-widest">Risk Exposure</p>
@@ -1070,24 +1104,24 @@ function TargetsListView({ targets, onSelect }: { targets: Target[], onSelect: (
   );
 }
 
-function TargetDetailView({ 
-  target, 
-  checklist, 
+function TargetDetailView({
+  target,
+  checklist,
   allChecklists,
   isAdmin,
   onChecklistChange,
-  onBack, 
-  onDelete, 
+  onBack,
+  onDelete,
   onUpdate,
   currentTheme
-}: { 
-  target: Target, 
-  checklist: Checklist, 
+}: {
+  target: Target,
+  checklist: Checklist,
   allChecklists: Checklist[],
   isAdmin: boolean,
   onChecklistChange: (id: string) => void,
-  onBack: () => void, 
-  onDelete: (id: string) => void, 
+  onBack: () => void,
+  onDelete: (id: string) => void,
   onUpdate: (t: Target) => void,
   currentTheme: Theme
 }) {
@@ -1096,35 +1130,14 @@ function TargetDetailView({
   const [selectedModel, setSelectedModel] = useState<AIModel>('gemini-3-flash-preview');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const calculateGlobalRiskScore = (results: Record<string, Record<string, ChecklistResult>>) => {
-    let totalWeight = 0;
-    let failedWeight = 0;
-    
-    allChecklists.forEach(cl => {
-      const clResults = results[cl.id] || {};
-      cl.items.forEach(item => {
-        totalWeight += item.weight;
-        const res = clResults[item.id];
-        const isCompleted = res?.checked;
-        const isApproved = res?.reviewStatus === 'approved';
-        
-        if (!isCompleted && !isApproved) {
-          failedWeight += item.weight;
-        }
-      });
-    });
-    
-    return totalWeight > 0 ? Math.round((failedWeight / totalWeight) * 100) : 0;
-  };
-
   const riskScore = useMemo(() => {
-    return calculateGlobalRiskScore(target.checklistResults);
+    return calculateGlobalRiskScore(target.checklistResults, allChecklists);
   }, [target, allChecklists]);
 
   const toggleItem = (itemId: string) => {
     const currentResults = target.checklistResults[checklist.id] || {};
     const itemResult = currentResults[itemId] || { checked: false, justification: '', reviewStatus: 'pending' };
-    
+
     const newResults = {
       ...target.checklistResults,
       [checklist.id]: {
@@ -1135,15 +1148,15 @@ function TargetDetailView({
         }
       }
     };
-    
-    const newRiskScore = calculateGlobalRiskScore(newResults);
+
+    const newRiskScore = calculateGlobalRiskScore(newResults, allChecklists);
     onUpdate({ ...target, checklistResults: newResults, riskScore: newRiskScore });
   };
 
   const updateJustification = (itemId: string, justification: string) => {
     const currentResults = target.checklistResults[checklist.id] || {};
     const itemResult = currentResults[itemId] || { checked: false, justification: '', reviewStatus: 'pending' };
-    
+
     const newResults = {
       ...target.checklistResults,
       [checklist.id]: {
@@ -1154,14 +1167,14 @@ function TargetDetailView({
         }
       }
     };
-    
+
     onUpdate({ ...target, checklistResults: newResults });
   };
 
   const updateReviewStatus = (itemId: string, status: 'pending' | 'approved' | 'rejected') => {
     const currentResults = target.checklistResults[checklist.id] || {};
     const itemResult = currentResults[itemId] || { checked: false, justification: '', reviewStatus: 'pending' };
-    
+
     const newResults = {
       ...target.checklistResults,
       [checklist.id]: {
@@ -1172,8 +1185,8 @@ function TargetDetailView({
         }
       }
     };
-    
-    const newRiskScore = calculateGlobalRiskScore(newResults);
+
+    const newRiskScore = calculateGlobalRiskScore(newResults, allChecklists);
     onUpdate({ ...target, checklistResults: newResults, riskScore: newRiskScore });
   };
 
@@ -1197,7 +1210,7 @@ function TargetDetailView({
             <ChevronRight className="w-4 h-4 rotate-180" />
             Back to Fleet
           </button>
-          <button 
+          <button
             onClick={() => generateTargetSecurityReport(target, checklist, currentTheme, analysis)}
             className="px-4 py-2 bg-emerald-600 text-white rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-100"
           >
@@ -1205,8 +1218,8 @@ function TargetDetailView({
             Generate Security Report
           </button>
         </div>
-        <button 
-          onClick={() => { if(confirm('Are you sure you want to decommission this target?')) onDelete(target.id); }}
+        <button
+          onClick={() => { if (confirm('Are you sure you want to decommission this target?')) onDelete(target.id); }}
           className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-bold transition-all"
         >
           <Trash2 className="w-4 h-4" />
@@ -1223,11 +1236,10 @@ function TargetDetailView({
                 <button
                   key={cl.id}
                   onClick={() => onChecklistChange(cl.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border-2 ${
-                    checklist.id === cl.id 
-                      ? 'bg-primary text-white border-primary shadow-lg shadow-indigo-100' 
-                      : 'bg-white text-slate-500 border-slate-100 hover:border-primary-light'
-                  }`}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all border-2 ${checklist.id === cl.id
+                    ? 'bg-primary text-white border-primary shadow-lg shadow-indigo-100'
+                    : 'bg-white text-slate-500 border-slate-100 hover:border-primary-light'
+                    }`}
                 >
                   {cl.title}
                 </button>
@@ -1247,7 +1259,7 @@ function TargetDetailView({
               <div className="flex items-center gap-4">
                 <div className="flex flex-col items-end">
                   <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mb-1">AI Engine</span>
-                  <select 
+                  <select
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value as AIModel)}
                     className="bg-white/50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-primary outline-none transition-all"
@@ -1257,7 +1269,7 @@ function TargetDetailView({
                     <option value="claude-3-5-sonnet">Claude 3.5 Sonnet</option>
                   </select>
                 </div>
-                <button 
+                <button
                   onClick={handleAnalyze}
                   disabled={isAnalyzing}
                   className="btn-primary px-8 py-3 rounded-2xl text-sm font-extrabold flex items-center gap-3 disabled:opacity-50"
@@ -1276,7 +1288,7 @@ function TargetDetailView({
                 </button>
               </div>
             </div>
-            
+
             <div className="grid gap-4">
               {checklist.items.map(item => {
                 const result = target.checklistResults[checklist.id]?.[item.id] || { checked: false, justification: '', reviewStatus: 'pending' };
@@ -1285,21 +1297,19 @@ function TargetDetailView({
                 const isRejected = result.reviewStatus === 'rejected';
 
                 return (
-                  <div 
-                    key={item.id} 
-                    className={`flex flex-col gap-4 p-6 rounded-2xl border-2 transition-all ${
-                      completed 
-                        ? 'border-emerald-200 bg-emerald-50/50 shadow-inner' 
-                        : isApproved
-                          ? 'border-primary-light bg-primary-light/50 shadow-inner'
-                          : 'border-slate-100 bg-white/40 hover:border-primary-light hover:bg-white/60'
-                    }`}
+                  <div
+                    key={item.id}
+                    className={`flex flex-col gap-4 p-6 rounded-2xl border-2 transition-all ${completed
+                      ? 'border-emerald-200 bg-emerald-50/50 shadow-inner'
+                      : isApproved
+                        ? 'border-primary-light bg-primary-light/50 shadow-inner'
+                        : 'border-slate-100 bg-white/40 hover:border-primary-light hover:bg-white/60'
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-5 cursor-pointer" onClick={() => toggleItem(item.id)}>
-                        <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${
-                          completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'
-                        }`}>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${completed ? 'bg-emerald-500 border-emerald-500' : 'border-slate-200'
+                          }`}>
                           {completed && <CheckCircle2 className="w-4 h-4 text-white" />}
                         </div>
                         <span className={`text-lg font-bold ${completed ? 'text-emerald-700' : isApproved ? 'text-primary' : 'text-slate-600'}`}>
@@ -1326,23 +1336,21 @@ function TargetDetailView({
                           placeholder="Why is this control not applicable or currently unachievable?"
                           className="w-full p-3 bg-white/80 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none transition-all resize-none h-20"
                         />
-                        
+
                         {isAdmin && result.justification && (
                           <div className="flex items-center gap-3 pt-2">
                             <p className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Expert Review:</p>
-                            <button 
+                            <button
                               onClick={() => updateReviewStatus(item.id, 'approved')}
-                              className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                                isApproved ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600'
-                              }`}
+                              className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${isApproved ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500 hover:bg-emerald-50 hover:text-emerald-600'
+                                }`}
                             >
                               Approve
                             </button>
-                            <button 
+                            <button
                               onClick={() => updateReviewStatus(item.id, 'rejected')}
-                              className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${
-                                isRejected ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600'
-                              }`}
+                              className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${isRejected ? 'bg-rose-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-rose-50 hover:text-rose-600'
+                                }`}
                             >
                               Reject
                             </button>
@@ -1352,7 +1360,7 @@ function TargetDetailView({
                     )}
 
                     {item.description && (
-                      <div 
+                      <div
                         onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
                         className="mt-1 ml-11 text-xs font-semibold text-primary hover:text-primary-dark flex items-center gap-1 cursor-pointer w-fit"
                       >
@@ -1360,7 +1368,7 @@ function TargetDetailView({
                       </div>
                     )}
                     {expandedId === item.id && item.description && (
-                      <motion.div 
+                      <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         className="mt-3 ml-11 p-4 bg-slate-50/80 rounded-xl border border-slate-200 text-sm text-slate-600 leading-relaxed"
@@ -1375,7 +1383,7 @@ function TargetDetailView({
           </div>
 
           {analysis && (
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="glass-card p-10 rounded-3xl space-y-8 relative overflow-hidden"
@@ -1383,7 +1391,7 @@ function TargetDetailView({
               <div className="absolute top-0 right-0 p-8 opacity-5">
                 <Shield className="w-32 h-32 text-primary" />
               </div>
-              
+
               <div className="flex items-center justify-between relative z-10">
                 <h4 className="text-2xl font-extrabold text-slate-900 flex items-center gap-3">
                   <div className="bg-primary-light p-2 rounded-xl">
@@ -1391,16 +1399,15 @@ function TargetDetailView({
                   </div>
                   AI Security Intelligence
                 </h4>
-                <span className={`status-badge ${
-                  analysis.severity === 'Critical' ? 'bg-rose-100 text-rose-700 border-rose-200' :
+                <span className={`status-badge ${analysis.severity === 'Critical' ? 'bg-rose-100 text-rose-700 border-rose-200' :
                   analysis.severity === 'High' ? 'bg-orange-100 text-orange-700 border-orange-200' :
-                  analysis.severity === 'Medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                  'bg-emerald-100 text-emerald-700 border-emerald-200'
-                }`}>
+                    analysis.severity === 'Medium' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                      'bg-emerald-100 text-emerald-700 border-emerald-200'
+                  }`}>
                   {analysis.severity} Risk Level
                 </span>
               </div>
-              
+
               <div className="p-6 bg-primary-light/50 rounded-2xl border border-primary-light/50 relative z-10">
                 <p className="text-slate-700 leading-relaxed font-medium">{analysis.summary}</p>
               </div>
@@ -1425,21 +1432,21 @@ function TargetDetailView({
         <div className="lg:col-span-4 space-y-8">
           <div className="glass-card p-8 rounded-3xl text-center sticky top-28">
             <p className="text-xs font-extrabold text-slate-400 uppercase tracking-[0.2em]">Security Shield Status</p>
-            
+
             <div className="mt-8 relative inline-block">
               {/* Shield Visualization */}
               <div className="relative z-10">
                 <svg className="w-48 h-48 -rotate-90">
                   <circle className="text-slate-100" strokeWidth="12" stroke="currentColor" fill="transparent" r="80" cx="96" cy="96" />
-                  <circle 
-                    className={riskScore > 70 ? 'text-rose-500' : riskScore > 40 ? 'text-amber-500' : 'text-emerald-500'} 
-                    strokeWidth="12" 
-                    strokeDasharray={502} 
-                    strokeDashoffset={502 - (502 * (100 - riskScore)) / 100} 
-                    strokeLinecap="round" 
-                    stroke="currentColor" 
-                    fill="transparent" 
-                    r="80" cx="96" cy="96" 
+                  <circle
+                    className={riskScore > 70 ? 'text-rose-500' : riskScore > 40 ? 'text-amber-500' : 'text-emerald-500'}
+                    strokeWidth="12"
+                    strokeDasharray={502}
+                    strokeDashoffset={502 - (502 * (100 - riskScore)) / 100}
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="transparent"
+                    r="80" cx="96" cy="96"
                     style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1)' }}
                   />
                 </svg>
@@ -1448,11 +1455,10 @@ function TargetDetailView({
                   <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">Shield Power</span>
                 </div>
               </div>
-              
+
               {/* Decorative Glow */}
-              <div className={`absolute inset-0 blur-3xl opacity-20 -z-10 rounded-full ${
-                riskScore > 70 ? 'bg-rose-500' : riskScore > 40 ? 'bg-amber-500' : 'bg-emerald-500'
-              }`} />
+              <div className={`absolute inset-0 blur-3xl opacity-20 -z-10 rounded-full ${riskScore > 70 ? 'bg-rose-500' : riskScore > 40 ? 'bg-amber-500' : 'bg-emerald-500'
+                }`} />
             </div>
 
             <div className="mt-8 space-y-2">
@@ -1460,12 +1466,12 @@ function TargetDetailView({
                 {riskScore > 70 ? 'System Vulnerable' : riskScore > 40 ? 'Shields Weak' : 'System Fortified'}
               </h4>
               <p className="text-slate-500 text-sm font-medium">
-                {riskScore > 70 ? 'Immediate action required to prevent breach.' : 
-                 riskScore > 40 ? 'Moderate risk detected. Review recommendations.' : 
-                 'All critical security baselines are met.'}
+                {riskScore > 70 ? 'Immediate action required to prevent breach.' :
+                  riskScore > 40 ? 'Moderate risk detected. Review recommendations.' :
+                    'All critical security baselines are met.'}
               </p>
             </div>
-            
+
             <div className="mt-10 pt-10 border-t border-white/20 text-left space-y-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -1495,7 +1501,7 @@ function TargetDetailView({
 
 function StatCard({ label, value, icon, trend, description }: { label: string, value: string, icon: React.ReactNode, trend?: string, description?: string }) {
   return (
-    <div className="glass-card p-6 rounded-3xl relative overflow-hidden group">
+    <div className="glass-card p-6 rounded-3xl relative group hover:z-50">
       <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
         {icon}
       </div>
@@ -1510,7 +1516,7 @@ function StatCard({ label, value, icon, trend, description }: { label: string, v
           </div>
         )}
       </div>
-      
+
       <p className="text-slate-400 text-xs font-extrabold uppercase tracking-widest">{label}</p>
       <h4 className="text-3xl font-extrabold mt-2 text-slate-800 tracking-tight">{value}</h4>
       {trend && (
@@ -1531,14 +1537,14 @@ interface TargetRowProps {
   onClick: () => void;
 }
 
-function SettingsView({ 
-  isAdmin, 
-  setIsAdmin, 
-  currentTheme, 
+function SettingsView({
+  isAdmin,
+  setIsAdmin,
+  currentTheme,
   onThemeChange,
   onSeed
-}: { 
-  isAdmin: boolean, 
+}: {
+  isAdmin: boolean,
   setIsAdmin: (val: boolean) => void,
   currentTheme: Theme,
   onThemeChange: (theme: Theme) => void,
@@ -1573,7 +1579,7 @@ function SettingsView({
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Enable Editing</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setIsAdmin(!isAdmin)}
               className={`w-14 h-7 rounded-full transition-all relative ${isAdmin ? 'bg-primary' : 'bg-slate-200'}`}
             >
@@ -1590,14 +1596,13 @@ function SettingsView({
                 <button
                   key={theme.id}
                   onClick={() => onThemeChange(theme)}
-                  className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all ${
-                    currentTheme.id === theme.id 
-                      ? 'border-primary bg-primary-light/50' 
-                      : 'border-slate-100 bg-white/40 hover:border-primary/30'
-                  }`}
+                  className={`flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all ${currentTheme.id === theme.id
+                    ? 'border-primary bg-primary-light/50'
+                    : 'border-slate-100 bg-white/40 hover:border-primary/30'
+                    }`}
                 >
-                  <div 
-                    className="w-10 h-10 rounded-xl shadow-inner" 
+                  <div
+                    className="w-10 h-10 rounded-xl shadow-inner"
                     style={{ background: `linear-gradient(135deg, ${theme.primary}, ${theme.secondary})` }}
                   />
                   <span className={`text-xs font-bold ${currentTheme.id === theme.id ? 'text-primary' : 'text-slate-500'}`}>
@@ -1627,11 +1632,10 @@ function SettingsView({
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest border ${
-                      engine.status === 'Connected' 
-                        ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                        : 'bg-slate-50 text-slate-400 border-slate-100'
-                    }`}>
+                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest border ${engine.status === 'Connected'
+                      ? 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                      : 'bg-slate-50 text-slate-400 border-slate-100'
+                      }`}>
                       {engine.status}
                     </span>
                     {engine.status !== 'Connected' && (
@@ -1659,14 +1663,14 @@ function SettingsView({
                 If your local environment is missing the standard security checklists, use the button below to initialize the database with default security standards.
               </p>
               <div className="flex flex-wrap justify-center gap-4">
-                <button 
+                <button
                   onClick={onSeed}
                   className="px-6 py-3 bg-primary text-white rounded-xl font-bold flex items-center gap-2 hover:bg-primary-dark transition-all shadow-lg shadow-primary/20"
                 >
                   <Plus className="w-4 h-4" />
                   Seed Default Security Data
                 </button>
-                <button 
+                <button
                   onClick={() => window.open('/api/backup', '_blank')}
                   className="px-6 py-3 bg-white text-slate-700 border border-slate-200 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
                 >
