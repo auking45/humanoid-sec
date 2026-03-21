@@ -48,8 +48,8 @@ async function query(text: string, params: any[] = []) {
 
 // --- Database Schema Initialization ---
 async function loadSeedData() {
-  let targets = [];
-  let checklists = [];
+  let targets: any[] = [];
+  let checklists: any[] = [];
 
   try {
     const targetsData = await fs.readFile(path.join(process.cwd(), 'data.json'), 'utf-8');
@@ -69,6 +69,29 @@ async function loadSeedData() {
   return { targets, checklists };
 }
 
+// Helper function for dynamic risk score calculation on the backend
+const calculateGlobalRiskScore = (results: Record<string, Record<string, any>>, allChecklists: any[]) => {
+  let totalWeight = 0;
+  let failedWeight = 0;
+
+  allChecklists.forEach(cl => {
+    const clResults = results[cl.id] || {};
+    cl.items.forEach((item: any) => {
+      totalWeight += item.weight;
+      const res = clResults[item.id];
+      const isCompleted = typeof res === 'boolean' ? res : res?.checked;
+      const isApproved = typeof res === 'object' ? res?.reviewStatus === 'approved' : false;
+
+      if (!isCompleted && !isApproved) {
+        failedWeight += item.weight;
+      }
+    });
+  });
+
+  return totalWeight > 0 ? Math.round((failedWeight / totalWeight) * 100) : 0;
+};
+
+// --- Database Schema Initialization ---
 async function initDb() {
   const INITIAL_DATA = await loadSeedData();
   const schema = `
@@ -176,80 +199,82 @@ async function initDb() {
 
   const targetCountRes = await query('SELECT COUNT(*) as count FROM targets');
   const count = parseInt(targetCountRes.rows[0].count);
-  
+
   const checklistCountRes = await query('SELECT COUNT(*) as count FROM checklists');
   const clCount = parseInt(checklistCountRes.rows[0].count);
-  
+
   if (count === 0 || clCount === 0) {
     console.log('Initializing database with seed data...');
-    
-    // 1. Insert targets
-    if (count === 0) {
-      for (const t of INITIAL_DATA.targets) {
-        await query(
-          'INSERT INTO targets (id, name, type, description, risk_score, last_analyzed) VALUES ($1, $2, $3, $4, $5, $6)',
-          [t.id, t.name, t.type, t.description, t.riskScore, t.lastAnalyzed]
-        );
-      }
-    }
+    await seedDatabase();
+  }
+}
 
-    // 2. Insert checklists and items
-    if (clCount === 0) {
-      for (const cl of INITIAL_DATA.checklists) {
-        await query(
-          'INSERT INTO checklists (id, title, description) VALUES ($1, $2, $3)',
-          [cl.id, cl.title, cl.description]
-        );
-        for (const item of cl.items) {
+// Refactoring: Seed logic completely decoupled into a reusable function
+async function seedDatabase() {
+  const INITIAL_DATA = await loadSeedData();
+
+  // Clear existing data
+  await query('DELETE FROM checklist_results');
+  await query('DELETE FROM checklist_items');
+  await query('DELETE FROM checklists');
+  await query('DELETE FROM targets');
+
+  for (const cl of INITIAL_DATA.checklists) {
+    await query(
+      'INSERT INTO checklists (id, title, description) VALUES ($1, $2, $3)',
+      [cl.id, cl.title, cl.description]
+    );
+    for (const item of cl.items) {
+      await query(
+        'INSERT INTO checklist_items (id, checklist_id, text, description, category, weight) VALUES ($1, $2, $3, $4, $5, $6)',
+        [item.id, cl.id, item.text, item.description || null, item.category, item.weight]
+      );
+    }
+  }
+
+  for (const t of INITIAL_DATA.targets) {
+    // Calculate score dynamically based on checklists, ignoring hardcoded values
+    const riskScore = calculateGlobalRiskScore(t.checklistResults as any, INITIAL_DATA.checklists);
+    await query(
+      'INSERT INTO targets (id, name, type, description, risk_score, last_analyzed) VALUES ($1, $2, $3, $4, $5, $6)',
+      [t.id, t.name, t.type, t.description, riskScore, t.lastAnalyzed]
+    );
+
+    if (t.checklistResults) {
+      for (const clId in t.checklistResults) {
+        for (const itemId in t.checklistResults[clId]) {
+          const res = (t.checklistResults[clId] as any)[itemId];
+          const isChecked = typeof res === 'boolean' ? res : res.checked;
+          const justification = typeof res === 'boolean' ? null : res.justification;
+          const reviewStatus = typeof res === 'boolean' ? 'pending' : res.reviewStatus;
+
           await query(
-            'INSERT INTO checklist_items (id, checklist_id, text, description, category, weight) VALUES ($1, $2, $3, $4, $5, $6)',
-            [item.id, cl.id, item.text, item.description || null, item.category, item.weight]
+            'INSERT INTO checklist_results (target_id, checklist_id, item_id, is_checked, justification, review_status) VALUES ($1, $2, $3, $4, $5, $6)',
+            [t.id, clId, itemId, isChecked ? 1 : 0, justification, reviewStatus]
           );
         }
       }
     }
+  }
 
-    // 3. Insert checklist_results (depends on both)
-    if (count === 0) {
-      for (const t of INITIAL_DATA.targets) {
-        for (const clId in t.checklistResults) {
-          for (const itemId in t.checklistResults[clId]) {
-            const res = t.checklistResults[clId][itemId];
-            const isChecked = typeof res === 'boolean' ? res : res.checked;
-            const justification = typeof res === 'boolean' ? null : res.justification;
-            const reviewStatus = typeof res === 'boolean' ? 'pending' : res.reviewStatus;
+  // Seed some history data if empty
+  const historyCountRes = await query('SELECT COUNT(*) as count FROM security_history');
+  if (parseInt(historyCountRes.rows[0].count) === 0) {
+    console.log('Seeding security history...');
+    const now = new Date();
+    for (let i = 7; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      const mockAvgRisk = 20 + Math.floor(Math.random() * 10) - (7 - i);
+      const mockActiveTargets = 1;
+      const mockCriticalAlerts = mockAvgRisk > 70 ? 1 : 0;
 
-            await query(
-              'INSERT INTO checklist_results (target_id, checklist_id, item_id, is_checked, justification, review_status) VALUES ($1, $2, $3, $4, $5, $6)',
-              [t.id, clId, itemId, isChecked ? 1 : 0, justification, reviewStatus]
-            );
-          }
-        }
-      }
+      await query(
+        'INSERT INTO security_history (timestamp, avg_risk, active_targets, critical_alerts) VALUES ($1, $2, $3, $4)',
+        [date.toISOString(), mockAvgRisk, mockActiveTargets, mockCriticalAlerts]
+      );
     }
-
-    // 4. Seed some history data if empty
-    const historyCountRes = await query('SELECT COUNT(*) as count FROM security_history');
-    if (parseInt(historyCountRes.rows[0].count) === 0) {
-      console.log('Seeding security history...');
-      const now = new Date();
-      for (let i = 7; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - i);
-        // Randomish data for trend
-        const mockAvgRisk = 20 + Math.floor(Math.random() * 10) - (7 - i);
-        const mockActiveTargets = 1;
-        const mockCriticalAlerts = mockAvgRisk > 70 ? 1 : 0;
-        
-        await query(
-          'INSERT INTO security_history (timestamp, avg_risk, active_targets, critical_alerts) VALUES ($1, $2, $3, $4)',
-          [date.toISOString(), mockAvgRisk, mockActiveTargets, mockCriticalAlerts]
-        );
-      }
-      console.log('Security history seeded successfully.');
-    } else {
-      console.log(`Security history already has ${historyCountRes.rows[0].count} records.`);
-    }
+    console.log('Security history seeded successfully.');
   }
 }
 
@@ -288,14 +313,14 @@ class SecurityRepository {
           reviewStatus: r.review_status || 'pending'
         };
       });
-      return { 
+      return {
         id: t.id,
         name: t.name,
         type: t.type,
         description: t.description,
         riskScore: t.risk_score,
         lastAnalyzed: t.last_analyzed,
-        checklistResults: targetResults 
+        checklistResults: targetResults
       };
     });
   }
@@ -305,7 +330,7 @@ class SecurityRepository {
       'INSERT INTO targets (id, name, type, description, risk_score, last_analyzed) VALUES ($1, $2, $3, $4, $5, $6)',
       [target.id, target.name, target.type, target.description, target.riskScore || 0, target.lastAnalyzed || null]
     );
-    
+
     if (target.checklistResults) {
       for (const clId in target.checklistResults) {
         for (const itemId in target.checklistResults[clId]) {
@@ -313,7 +338,7 @@ class SecurityRepository {
           const isChecked = typeof res === 'boolean' ? res : res.checked;
           const justification = typeof res === 'boolean' ? null : res.justification;
           const reviewStatus = typeof res === 'boolean' ? 'pending' : res.reviewStatus;
-          
+
           await query(
             'INSERT INTO checklist_results (target_id, checklist_id, item_id, is_checked, justification, review_status) VALUES ($1, $2, $3, $4, $5, $6)',
             [target.id, clId, itemId, isChecked ? 1 : 0, justification, reviewStatus]
@@ -377,7 +402,7 @@ class SecurityRepository {
         await client.query('BEGIN');
         await client.query('DELETE FROM checklist_items');
         await client.query('DELETE FROM checklists');
-        
+
         for (const cl of checklists) {
           await client.query(
             'INSERT INTO checklists (id, title, description) VALUES ($1, $2, $3)',
@@ -401,7 +426,7 @@ class SecurityRepository {
       const transaction = sqliteDb.transaction((cls: any[]) => {
         sqliteDb.prepare('DELETE FROM checklist_items').run();
         sqliteDb.prepare('DELETE FROM checklists').run();
-        
+
         for (const cl of cls) {
           sqliteDb.prepare('INSERT INTO checklists (id, title, description) VALUES (?, ?, ?)').run(cl.id, cl.title, cl.description);
           for (const item of cl.items) {
@@ -475,60 +500,6 @@ async function startServer() {
     }
   });
 
-  app.post("/api/seed", async (req, res) => {
-    try {
-      const INITIAL_DATA = await loadSeedData();
-      // Clear existing data
-      await query('DELETE FROM checklist_results');
-      await query('DELETE FROM checklist_items');
-      await query('DELETE FROM checklists');
-      await query('DELETE FROM targets');
-
-      // 1. Insert targets first
-      for (const t of INITIAL_DATA.targets) {
-        await query(
-          'INSERT INTO targets (id, name, type, description, risk_score, last_analyzed) VALUES ($1, $2, $3, $4, $5, $6)',
-          [t.id, t.name, t.type, t.description, t.riskScore, t.lastAnalyzed]
-        );
-      }
-
-      // 2. Insert checklists and items
-      for (const cl of INITIAL_DATA.checklists) {
-        await query(
-          'INSERT INTO checklists (id, title, description) VALUES ($1, $2, $3)',
-          [cl.id, cl.title, cl.description]
-        );
-        for (const item of cl.items) {
-          await query(
-            'INSERT INTO checklist_items (id, checklist_id, text, description, category, weight) VALUES ($1, $2, $3, $4, $5, $6)',
-            [item.id, cl.id, item.text, item.description || null, item.category, item.weight]
-          );
-        }
-      }
-
-      // 3. Insert checklist_results (depends on targets and checklists)
-      for (const t of INITIAL_DATA.targets) {
-        for (const clId in t.checklistResults) {
-          for (const itemId in t.checklistResults[clId]) {
-            const res = t.checklistResults[clId][itemId];
-            const isChecked = typeof res === 'boolean' ? res : res.checked;
-            const justification = typeof res === 'boolean' ? null : res.justification;
-            const reviewStatus = typeof res === 'boolean' ? 'pending' : res.reviewStatus;
-
-            await query(
-              'INSERT INTO checklist_results (target_id, checklist_id, item_id, is_checked, justification, review_status) VALUES ($1, $2, $3, $4, $5, $6)',
-              [t.id, clId, itemId, isChecked ? 1 : 0, justification, reviewStatus]
-            );
-          }
-        }
-      }
-
-      res.json({ message: "Database seeded successfully" });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-
   app.get("/api/backup", async (req, res) => {
     try {
       const targets = await query('SELECT * FROM targets');
@@ -597,6 +568,38 @@ async function startServer() {
       } else {
         res.status(404).json({ error: "Checklist not found" });
       }
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // NEW: Add 3 essential APIs called by the frontend (Refactoring)
+
+  app.post("/api/seed", async (req, res) => {
+    try {
+      await seedDatabase();
+      res.json({ success: true, message: "Database completely seeded and recalculated." });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/history", async (req, res) => {
+    try {
+      // Return an empty array to prevent frontend crashes until the history table is introduced in the future
+      res.json([]);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get("/api/backup", async (req, res) => {
+    try {
+      const targets = await repo.getTargets();
+      const checklists = await repo.getChecklists();
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', 'attachment; filename="humanoid-sec-backup.json"');
+      res.send(JSON.stringify({ targets, checklists }, null, 2));
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -685,4 +688,3 @@ async function startServer() {
 }
 
 startServer();
-
