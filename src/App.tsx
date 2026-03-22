@@ -26,9 +26,12 @@ import {
   Settings,
   Download,
   HelpCircle,
+  BookOpen,
+  FileText,
+  UploadCloud
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Checklist, Target, RiskAnalysis, AIModel, ChecklistResult, Theme } from './types';
+import { Checklist, Target, RiskAnalysis, AIModel, ChecklistResult, Theme, Guide } from './types';
 
 const THEMES: Theme[] = [
   { id: 'indigo', name: 'Indigo', primary: '#6366F1', primaryDark: '#4F46E5', primaryLight: '#EEF2FF', secondary: '#A855F7' },
@@ -54,6 +57,8 @@ import {
 } from './services/reportingService';
 
 const calculateGlobalRiskScore = (results: Record<string, Record<string, any>>, allChecklists: Checklist[]) => {
+  if (!results) results = {};
+  if (!allChecklists) return 0;
   let totalWeight = 0;
   let failedWeight = 0;
 
@@ -89,7 +94,7 @@ const MOCK_CHECKLIST: Checklist = {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'checklists' | 'targets' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'checklists' | 'targets' | 'guides' | 'settings'>('dashboard');
   const [isAdmin, setIsAdmin] = useState(false);
   const [currentTheme, setCurrentTheme] = useState<Theme>(() => {
     const saved = localStorage.getItem('app-theme');
@@ -97,6 +102,7 @@ export default function App() {
   });
   const [targets, setTargets] = useState<Target[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [guides, setGuides] = useState<Guide[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<Target | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTarget, setNewTarget] = useState({ name: '', type: '', description: '' });
@@ -127,15 +133,17 @@ export default function App() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [targetsRes, checklistsRes] = await Promise.all([
+      const [targetsRes, checklistsRes, guidesRes] = await Promise.all([
         fetch('/api/targets'),
-        fetch('/api/checklists')
+        fetch('/api/checklists'),
+        fetch('/api/guides')
       ]);
 
-      if (targetsRes.ok && checklistsRes.ok) {
-        const [targetsData, checklistsData] = await Promise.all([
+      if (targetsRes.ok && checklistsRes.ok && guidesRes.ok) {
+        const [targetsData, checklistsData, guidesData] = await Promise.all([
           targetsRes.json(),
-          checklistsRes.json()
+          checklistsRes.json(),
+          guidesRes.json()
         ]);
 
         const recalculatedTargets = targetsData.map((t: Target) => ({
@@ -145,6 +153,7 @@ export default function App() {
 
         setTargets(recalculatedTargets);
         setChecklists(checklistsData);
+        setGuides(guidesData);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -225,6 +234,32 @@ export default function App() {
     }
   };
 
+  const handleImportGuide = async (guide: Guide) => {
+    try {
+      const response = await fetch('/api/guides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(guide),
+      });
+      if (response.ok) {
+        setGuides([...guides, guide]);
+      }
+    } catch (error) {
+      console.error('Failed to import guide:', error);
+    }
+  };
+
+  const handleDeleteGuide = async (id: string) => {
+    try {
+      const response = await fetch(`/api/guides/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setGuides(guides.filter(g => g.id !== id));
+      }
+    } catch (error) {
+      console.error('Failed to delete guide:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -267,6 +302,12 @@ export default function App() {
             label="Targets"
             active={activeTab === 'targets'}
             onClick={() => { setActiveTab('targets'); setSelectedTarget(null); }}
+          />
+          <NavItem
+            icon={<BookOpen className="w-5 h-5" />}
+            label="Guides"
+            active={activeTab === 'guides'}
+            onClick={() => { setActiveTab('guides'); setSelectedTarget(null); }}
           />
           <NavItem
             icon={<Settings className="w-5 h-5" />}
@@ -374,6 +415,14 @@ export default function App() {
                     onUpdate={handleUpdateTarget}
                   />
                   : <TargetsListView targets={filteredTargets} onSelect={setSelectedTarget} />
+              )}
+              {activeTab === 'guides' && (
+                <GuidesView
+                  guides={guides}
+                  onImport={handleImportGuide}
+                  onDelete={handleDeleteGuide}
+                  isAdmin={isAdmin}
+                />
               )}
               {activeTab === 'settings' && (
                 <SettingsView
@@ -1565,6 +1614,201 @@ function StatCard({ label, value, icon, trend, description }: { label: string, v
           <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">{trend}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function SimpleMarkdown({ content }: { content: string }) {
+  if (!content) return null;
+  const blocks = content.split(/(```[\w]*\n[\s\S]*?\n```)/g);
+
+  return (
+    <div className="prose prose-slate max-w-none space-y-4">
+      {blocks.map((block, i) => {
+        if (block.startsWith('```')) {
+          const match = block.match(/```([\w]*)\n([\s\S]*?)\n```/);
+          if (!match) return null;
+          const lang = match[1];
+          const code = match[2];
+          return (
+            <div key={i} className="relative group mt-6 mb-8">
+              <div className="absolute top-0 left-0 w-full h-10 bg-slate-800 rounded-t-xl flex items-center px-4 border-b border-slate-700">
+                <div className="flex gap-2">
+                  <div className="w-3 h-3 rounded-full bg-rose-500"></div>
+                  <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+                  <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                </div>
+                {lang && <span className="ml-4 text-xs font-mono text-slate-400">{lang}</span>}
+              </div>
+              <pre className="bg-slate-900 text-slate-300 p-6 pt-14 rounded-xl overflow-x-auto text-sm font-mono leading-relaxed shadow-2xl border border-slate-800 custom-scrollbar-h">
+                <code>{code}</code>
+              </pre>
+            </div>
+          );
+        }
+
+        const paragraphs = block.split('\n\n');
+        return paragraphs.map((p, j) => {
+          if (!p.trim()) return null;
+
+          const hMatch = p.match(/^(#{1,6})\s+(.*)/);
+          if (hMatch) {
+            const level = hMatch[1].length;
+            const text = hMatch[2];
+            if (level === 3) {
+              return (
+                <h4 key={`${i}-${j}`} className="text-2xl font-extrabold text-slate-900 flex items-center gap-3 mb-6 border-b border-slate-100 pb-4 mt-8">
+                  <div className="bg-primary-light p-2 rounded-xl shadow-sm">
+                    <ShieldCheck className="w-6 h-6 text-primary" />
+                  </div>
+                  {text}
+                </h4>
+              );
+            }
+            const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+            return <Tag key={`${i}-${j}`} className="font-bold text-slate-800 mt-6 mb-2 text-lg">{text}</Tag>;
+          }
+
+          const parts = p.split(/(`[^`]+`)/g);
+          return (
+            <p key={`${i}-${j}`} className="text-slate-600 font-medium leading-relaxed mb-4 whitespace-pre-wrap">
+              {parts.map((part, k) => {
+                if (part.startsWith('`') && part.endsWith('`')) {
+                  return <code key={k} className="bg-slate-100 text-pink-600 px-1.5 py-0.5 rounded-md font-mono text-sm border border-slate-200">{part.slice(1, -1)}</code>;
+                }
+
+                const boldParts = part.split(/(\*\*.*?\*\*)/g);
+                return (
+                  <React.Fragment key={k}>
+                    {boldParts.map((bp, l) => {
+                      if (bp.startsWith('**') && bp.endsWith('**')) {
+                        return <strong key={l} className="text-slate-900 font-extrabold">{bp.slice(2, -2)}</strong>;
+                      }
+                      return <React.Fragment key={l}>{bp}</React.Fragment>;
+                    })}
+                  </React.Fragment>
+                );
+              })}
+            </p>
+          );
+        });
+      })}
+    </div>
+  );
+}
+
+function GuidesView({ guides, onImport, onDelete, isAdmin }: { guides: Guide[], onImport: (g: Guide) => void, onDelete: (id: string) => void, isAdmin: boolean }) {
+  const [selectedGuide, setSelectedGuide] = useState<Guide | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const content = evt.target?.result as string;
+      const titleMatch = content.match(/^#+\s+(.*)$/m);
+      const title = titleMatch ? titleMatch[1].replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim() : file.name.replace('.md', '');
+
+      onImport({
+        id: `g-${Date.now()}`,
+        title: title || 'Imported Guide',
+        description: `Imported from ${file.name}`,
+        content
+      });
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  if (selectedGuide) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-8 pb-20">
+        <div className="flex items-center justify-between">
+          <button onClick={() => setSelectedGuide(null)} className="text-slate-500 hover:text-primary flex items-center gap-2 text-sm font-bold transition-all bg-white/50 px-4 py-2 rounded-xl border border-white/60">
+            <ChevronRight className="w-4 h-4 rotate-180" />
+            Back to Guides
+          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => downloadMarkdown(selectedGuide.title.replace(/\s+/g, '_'), selectedGuide.content)}
+              className="text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all"
+            >
+              <Download className="w-4 h-4" />
+              Export MD
+            </button>
+            {isAdmin && (
+              <button
+                onClick={() => {
+                  if (confirm('Delete this guide?')) {
+                    onDelete(selectedGuide.id);
+                    setSelectedGuide(null);
+                  }
+                }}
+                className="text-rose-500 hover:bg-rose-50 px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="glass-card p-10 rounded-3xl">
+          <SimpleMarkdown content={selectedGuide.content} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8 pb-20">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight">Security Guides</h3>
+          <p className="text-slate-500 font-medium mt-1">Comprehensive implementation scripts and tutorials for your fleet.</p>
+        </div>
+        {isAdmin && (
+          <div>
+            <input type="file" accept=".md" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="btn-primary px-6 py-3 rounded-2xl text-sm font-extrabold flex items-center gap-3"
+            >
+              <UploadCloud className="w-5 h-5" />
+              Import Markdown
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {guides.map(guide => (
+          <div
+            key={guide.id}
+            onClick={() => setSelectedGuide(guide)}
+            className="glass-card p-6 rounded-3xl hover:shadow-primary-light hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group flex flex-col justify-between"
+          >
+            <div>
+              <div className="flex items-start gap-4 mb-4">
+                <div className="bg-primary-light p-3 rounded-xl group-hover:bg-primary transition-colors shrink-0">
+                  <FileText className="w-5 h-5 text-primary group-hover:text-white" />
+                </div>
+                <h4 className="text-lg font-bold text-slate-900 leading-tight">{guide.title}</h4>
+              </div>
+              <p className="text-sm text-slate-500 font-medium line-clamp-2">{guide.description}</p>
+            </div>
+            <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+              <span className="text-[10px] uppercase font-extrabold tracking-widest text-slate-400">Read Guide</span>
+              <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-primary transition-colors" />
+            </div>
+          </div>
+        ))}
+        {guides.length === 0 && (
+          <div className="col-span-2 p-12 text-center text-slate-400 font-medium glass-card rounded-3xl">
+            No guides available. Import a markdown file to get started.
+          </div>
+        )}
+      </div>
     </div>
   );
 }

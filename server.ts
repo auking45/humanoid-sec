@@ -71,6 +71,8 @@ async function loadSeedData() {
 
 // Helper function for dynamic risk score calculation on the backend
 const calculateGlobalRiskScore = (results: Record<string, Record<string, any>>, allChecklists: any[]) => {
+  if (!results) results = {};
+  if (!allChecklists) return 0;
   let totalWeight = 0;
   let failedWeight = 0;
 
@@ -139,6 +141,13 @@ async function initDb() {
       avg_risk INTEGER NOT NULL,
       active_targets INTEGER NOT NULL,
       critical_alerts INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS guides (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT,
+      content TEXT NOT NULL
     );
   `;
 
@@ -225,6 +234,7 @@ async function seedDatabase() {
   await query('DELETE FROM checklist_items');
   await query('DELETE FROM checklists');
   await query('DELETE FROM targets');
+  await query('DELETE FROM guides');
 
   for (const cl of INITIAL_DATA.checklists) {
     await query(
@@ -282,6 +292,29 @@ async function seedDatabase() {
       );
     }
     console.log('Security history seeded successfully.');
+  }
+
+  // Seed guides from local directory if available
+  const guidesDir = path.join(process.cwd(), 'guides');
+  try {
+    await fs.access(guidesDir);
+    const files = await fs.readdir(guidesDir);
+    for (const file of files) {
+      if (file.endsWith('.md')) {
+        const content = await fs.readFile(path.join(guidesDir, file), 'utf-8');
+        const titleMatch = content.match(/^#+\s+(.*)$/m);
+        const title = titleMatch ? titleMatch[1].replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim() : file.replace('.md', '');
+        const id = `g-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+
+        await query(
+          'INSERT INTO guides (id, title, description, content) VALUES ($1, $2, $3, $4)',
+          [id, title, `Imported from local file: ${file}`, content]
+        );
+      }
+    }
+    console.log('Local guides seeded successfully.');
+  } catch (err) {
+    console.log('No local guides directory found or error reading it, skipping file-based guides seed.');
   }
 }
 
@@ -608,6 +641,38 @@ async function startServer() {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', 'attachment; filename="humanoid-sec-backup.json"');
       res.send(JSON.stringify({ targets, checklists }, null, 2));
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // NEW: Guides APIs
+  app.get("/api/guides", async (req, res) => {
+    try {
+      const guides = await query('SELECT * FROM guides');
+      res.json(guides.rows);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/guides", async (req, res) => {
+    try {
+      const guide = req.body;
+      await query(
+        'INSERT INTO guides (id, title, description, content) VALUES ($1, $2, $3, $4)',
+        [guide.id, guide.title, guide.description || '', guide.content]
+      );
+      res.status(201).json(guide);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete("/api/guides/:id", async (req, res) => {
+    try {
+      await query('DELETE FROM guides WHERE id = $1', [req.params.id]);
+      res.status(204).send();
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

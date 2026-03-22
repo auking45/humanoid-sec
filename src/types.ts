@@ -44,6 +44,13 @@ export interface Target {
   lastAnalyzed: string;
 }
 
+export interface Guide {
+  id: string;
+  title: string;
+  description: string;
+  content: string;
+}
+
 export type AIModel = 'gemini-3-flash-preview' | 'gpt-4o' | 'claude-3-5-sonnet';
 
 export interface RiskAnalysis {
