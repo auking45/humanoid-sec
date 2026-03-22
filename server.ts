@@ -117,6 +117,7 @@ async function initDb() {
       description TEXT,
       category TEXT NOT NULL,
       weight INTEGER NOT NULL,
+      implementation_guide TEXT,
       CONSTRAINT fk_checklist FOREIGN KEY (checklist_id) REFERENCES checklists(id) ON DELETE CASCADE
     );
 
@@ -165,6 +166,9 @@ async function initDb() {
     if (!itemColumns.some((c: any) => c.name === 'description')) {
       sqliteDb.exec("ALTER TABLE checklist_items ADD COLUMN description TEXT");
     }
+    if (!itemColumns.some((c: any) => c.name === 'implementation_guide')) {
+      sqliteDb.exec("ALTER TABLE checklist_items ADD COLUMN implementation_guide TEXT");
+    }
   } else {
     await query(`
       DO $$
@@ -177,6 +181,9 @@ async function initDb() {
         END IF;
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='checklist_items' AND column_name='description') THEN
           ALTER TABLE checklist_items ADD COLUMN description TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='checklist_items' AND column_name='implementation_guide') THEN
+          ALTER TABLE checklist_items ADD COLUMN implementation_guide TEXT;
         END IF;
       END $$;
     `);
@@ -226,8 +233,8 @@ async function seedDatabase() {
     );
     for (const item of cl.items) {
       await query(
-        'INSERT INTO checklist_items (id, checklist_id, text, description, category, weight) VALUES ($1, $2, $3, $4, $5, $6)',
-        [item.id, cl.id, item.text, item.description || null, item.category, item.weight]
+        'INSERT INTO checklist_items (id, checklist_id, text, description, category, weight, implementation_guide) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [item.id, cl.id, item.text, item.description || null, item.category, item.weight, item.implementationGuide || null]
       );
     }
   }
@@ -389,6 +396,7 @@ class SecurityRepository {
         checklistId: i.checklist_id,
         text: i.text,
         description: i.description,
+        implementationGuide: i.implementation_guide,
         category: i.category,
         weight: i.weight
       }))
@@ -410,8 +418,8 @@ class SecurityRepository {
           );
           for (const item of cl.items) {
             await client.query(
-              'INSERT INTO checklist_items (id, checklist_id, text, description, category, weight) VALUES ($1, $2, $3, $4, $5, $6)',
-              [item.id, cl.id, item.text, item.description || null, item.category, item.weight]
+              'INSERT INTO checklist_items (id, checklist_id, text, description, category, weight, implementation_guide) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+              [item.id, cl.id, item.text, item.description || null, item.category, item.weight, item.implementationGuide || null]
             );
           }
         }
@@ -430,7 +438,7 @@ class SecurityRepository {
         for (const cl of cls) {
           sqliteDb.prepare('INSERT INTO checklists (id, title, description) VALUES (?, ?, ?)').run(cl.id, cl.title, cl.description);
           for (const item of cl.items) {
-            sqliteDb.prepare('INSERT INTO checklist_items (id, checklist_id, text, description, category, weight) VALUES (?, ?, ?, ?, ?, ?)').run(item.id, cl.id, item.text, item.description || null, item.category, item.weight);
+            sqliteDb.prepare('INSERT INTO checklist_items (id, checklist_id, text, description, category, weight, implementation_guide) VALUES (?, ?, ?, ?, ?, ?, ?)').run(item.id, cl.id, item.text, item.description || null, item.category, item.weight, item.implementationGuide || null);
           }
         }
       });

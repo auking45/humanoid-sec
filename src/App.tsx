@@ -79,7 +79,7 @@ const MOCK_CHECKLIST: Checklist = {
   title: 'Standard Robot Security Baseline',
   description: 'Essential security controls for autonomous mobile robots.',
   items: [
-    { id: 'i1', text: 'Default passwords changed', category: 'Access Control', weight: 5 },
+    { id: 'i1', text: 'Default passwords changed', category: 'Access', weight: 5 },
     { id: 'i2', text: 'Network traffic encrypted (TLS/SSL)', category: 'Network', weight: 4 },
     { id: 'i3', text: 'Physical ports disabled/locked', category: 'Physical', weight: 3 },
     { id: 'i4', text: 'Firmware update mechanism verified', category: 'Software', weight: 4 },
@@ -651,6 +651,19 @@ export default function App() {
                           className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 h-16 resize-none"
                         />
                       </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">Implementation Guide <span className="text-[9px] font-normal text-slate-300">(Optional code/steps)</span></label>
+                        <textarea
+                          value={item.implementationGuide || ''}
+                          onChange={(e) => {
+                            const newItems = [...newChecklist.items];
+                            newItems[idx].implementationGuide = e.target.value;
+                            setNewChecklist({ ...newChecklist, items: newItems });
+                          }}
+                          placeholder="e.g. Run `sudo ufw enable` or code snippet..."
+                          className="w-full px-3 py-2 text-xs bg-slate-900 text-emerald-400 border border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 h-16 resize-none font-mono"
+                        />
+                      </div>
                       <div className="flex items-center gap-4">
                         <div className="flex-1">
                           <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Category</label>
@@ -666,11 +679,11 @@ export default function App() {
                             <option value="Network">Network</option>
                             <option value="Physical">Physical</option>
                             <option value="Software">Software</option>
-                            <option value="Access">Access Control</option>
+                            <option value="Access">Access</option>
                             <option value="System">System</option>
-                            <option value="OS">OS Hardening</option>
-                            <option value="Cloud">Cloud Communication</option>
-                            <option value="Audit">Audit Logging</option>
+                            <option value="OS">OS</option>
+                            <option value="Cloud">Cloud</option>
+                            <option value="Audit">Audit</option>
                           </select>
                         </div>
                         <div className="w-24">
@@ -962,13 +975,24 @@ function ChecklistView({ checklist, onBack, isAdmin, onEdit, currentTheme }: { c
                   {expandedId === item.id ? <ChevronUp className="w-6 h-6" /> : <ChevronDown className="w-6 h-6" />}
                 </div>
               </div>
-              {expandedId === item.id && item.description && (
+              {expandedId === item.id && (item.description || item.implementationGuide) && (
                 <motion.div
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
-                  className="mt-4 p-4 bg-primary-light/50 rounded-xl border border-primary-light text-sm text-slate-600 leading-relaxed font-medium"
+                  className="mt-4 space-y-3"
                 >
-                  {item.description}
+                  {item.description && (
+                    <div className="p-4 bg-primary-light/50 rounded-xl border border-primary-light text-sm text-slate-600 leading-relaxed font-medium">
+                      <p className="text-xs font-extrabold text-primary uppercase tracking-wider mb-2 flex items-center gap-2"><ShieldCheck className="w-3 h-3" /> Requirement</p>
+                      {item.description}
+                    </div>
+                  )}
+                  {item.implementationGuide && (
+                    <div className="p-4 bg-slate-800 rounded-xl border border-slate-700 text-sm text-slate-300 leading-relaxed">
+                      <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><Activity className="w-3 h-3" /> Implementation Guide</p>
+                      <div className="whitespace-pre-wrap font-mono text-xs text-emerald-400">{item.implementationGuide}</div>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </div>
@@ -1364,21 +1388,32 @@ function TargetDetailView({
                       </div>
                     )}
 
-                    {item.description && (
+                    {(item.description || item.implementationGuide) && (
                       <div
                         onClick={() => setExpandedId(expandedId === item.id ? null : item.id)}
                         className="mt-1 ml-11 text-xs font-semibold text-primary hover:text-primary-dark flex items-center gap-1 cursor-pointer w-fit"
                       >
-                        {expandedId === item.id ? 'Hide Details' : 'View Detailed Requirements'}
+                        {expandedId === item.id ? 'Hide Details' : 'View Details & Guides'}
                       </div>
                     )}
-                    {expandedId === item.id && item.description && (
+                    {expandedId === item.id && (item.description || item.implementationGuide) && (
                       <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
-                        className="mt-3 ml-11 p-4 bg-slate-50/80 rounded-xl border border-slate-200 text-sm text-slate-600 leading-relaxed"
+                        className="mt-3 ml-11 space-y-3"
                       >
-                        {item.description}
+                        {item.description && (
+                          <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200 text-sm text-slate-600 leading-relaxed">
+                            <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2">Requirement</p>
+                            {item.description}
+                          </div>
+                        )}
+                        {item.implementationGuide && (
+                          <div className="p-4 bg-slate-800 rounded-xl border border-slate-700 text-sm text-slate-300 leading-relaxed">
+                            <p className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-2"><Activity className="w-3 h-3" /> Implementation Guide</p>
+                            <div className="whitespace-pre-wrap font-mono text-xs text-emerald-400">{item.implementationGuide}</div>
+                          </div>
+                        )}
                       </motion.div>
                     )}
                   </div>
