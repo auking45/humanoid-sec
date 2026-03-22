@@ -25,7 +25,7 @@ if (DB_TYPE === 'postgres') {
   });
   console.log('Using PostgreSQL database');
 } else {
-  sqliteDb = new Database('database.sqlite');
+  sqliteDb = new Database(path.join(process.cwd(), 'server', 'data', 'database.sqlite'));
   console.log('Using SQLite database');
 }
 
@@ -52,7 +52,7 @@ async function loadSeedData() {
   let checklists: any[] = [];
 
   try {
-    const targetsData = await fs.readFile(path.join(process.cwd(), 'data.json'), 'utf-8');
+    const targetsData = await fs.readFile(path.join(process.cwd(), 'server', 'data', 'data.json'), 'utf-8');
     const parsedTargets = JSON.parse(targetsData);
     targets = parsedTargets.targets || [];
   } catch (err) {
@@ -60,7 +60,7 @@ async function loadSeedData() {
   }
 
   try {
-    const checklistsData = await fs.readFile(path.join(process.cwd(), 'humanoid-sec-checklists.json'), 'utf-8');
+    const checklistsData = await fs.readFile(path.join(process.cwd(), 'server', 'data', 'humanoid-sec-checklists.json'), 'utf-8');
     checklists = JSON.parse(checklistsData);
   } catch (err) {
     console.error('Failed to load humanoid-sec-checklists.json for checklists');
@@ -295,7 +295,7 @@ async function seedDatabase() {
   }
 
   // Seed guides from local directory if available
-  const guidesDir = path.join(process.cwd(), 'guides');
+  const guidesDir = path.join(process.cwd(), 'server', 'data', 'guides');
   try {
     await fs.access(guidesDir);
     const files = await fs.readdir(guidesDir);
