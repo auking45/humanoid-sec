@@ -1,0 +1,975 @@
+[
+  {
+    "id": "cl-ssdf",
+    "title": "SSDF (Secure Software Development Framework)",
+    "description": "Checklist for secure software development lifecycle and vulnerability management.",
+    "items": [
+      {
+        "id": "SSDF-01",
+        "category": "SSDF",
+        "text": "Define Software Development Security Requirements",
+        "description": "Security requirements for the software development infrastructure, processes, products, and external components must be defined, documented, and regularly reviewed and updated.",
+        "implementationGuide": "Document and enforce security requirements across the SDLC.",
+        "weight": 5
+      },
+      {
+        "id": "SSDF-02",
+        "category": "SSDF",
+        "text": "Manage Security Roles and Responsibilities",
+        "description": "Security-related roles and responsibilities must be clearly defined and periodically reviewed at all stages of the SDLC, and appropriate training must be provided to personnel performing these roles.",
+        "implementationGuide": "Assign and train security personnel across the SDLC.",
+        "weight": 4
+      },
+      {
+        "id": "SSDF-03",
+        "category": "SSDF",
+        "text": "Manage Security Development Toolchain",
+        "description": "The development and security toolchain used at each stage of the SDLC must be defined, integrated, and operated to ensure automated security verification and audit traceability.",
+        "implementationGuide": "Integrate automated security tools into the CI/CD pipeline.",
+        "weight": 5
+      },
+      {
+        "id": "SSDF-04",
+        "category": "SSDF",
+        "text": "Define Security Check Criteria and Manage Data",
+        "description": "Security check criteria must be defined for the entire software development lifecycle, and the security check results produced according to these criteria must be securely collected and protected.",
+        "implementationGuide": "Define check criteria and securely store results.",
+        "weight": 4
+      },
+      {
+        "id": "SSDF-05",
+        "category": "SSDF",
+        "text": "Protect Development Environment",
+        "description": "Each environment, including software development, build, testing, and deployment, and all its components must be hardened to be protected from internal and external threats.",
+        "implementationGuide": "Harden all development, build, and testing environments.",
+        "weight": 5
+      },
+      {
+        "id": "SSDF-06",
+        "category": "SSDF",
+        "text": "Prevent Unauthorized Code Access and Tampering",
+        "description": "All forms of code, including source code, executables, and configuration scripts, must be protected from unauthorized access and tampering, and the principle of least privilege must be applied so that only authorized personnel, tools, and services can access them.",
+        "implementationGuide": "Apply least privilege access to source code and scripts.",
+        "weight": 5
+      },
+      {
+        "id": "SSDF-07",
+        "category": "SSDF",
+        "text": "Provide Software Distribution Integrity Verification",
+        "description": "When distributing or providing software, verification information such as hash values or digital signatures must be provided so that the recipient can verify the integrity of the distribution files.",
+        "implementationGuide": "Provide hashes/signatures for distributed software.",
+        "weight": 4
+      },
+      {
+        "id": "SSDF-08",
+        "category": "SSDF",
+        "text": "Store and Protect Software Distributions",
+        "description": "Software distribution files and related data must be securely stored, and the origin and change history of the components included in each distribution must be managed for traceability.",
+        "implementationGuide": "Store distributions securely and maintain version histories.",
+        "weight": 4
+      },
+      {
+        "id": "SSDF-09",
+        "category": "SSDF",
+        "text": "Establish Secure Design and Risk Mitigation Framework",
+        "description": "A design framework must be established that reflects security requirements during the software design phase and identifies and mitigates potential security risks through threat modeling and risk analysis.",
+        "implementationGuide": "Implement threat modeling during the design phase.",
+        "weight": 5
+      },
+      {
+        "id": "SSDF-10",
+        "category": "SSDF",
+        "text": "Perform Secure Design Review",
+        "description": "It must be checked whether the software design meets security requirements and appropriately mitigates identified security risks through an independent reviewer or automated verification procedures.",
+        "implementationGuide": "Perform automated and manual secure design reviews.",
+        "weight": 4
+      },
+      {
+        "id": "SSDF-11",
+        "category": "SSDF",
+        "text": "Reuse Verified Libraries",
+        "description": "Reusing externally or internally verified secure software components should reduce redundant development and minimize the risk of introducing new security vulnerabilities.",
+        "implementationGuide": "Prioritize the reuse of verified secure internal/external libraries.",
+        "weight": 3
+      },
+      {
+        "id": "SSDF-12",
+        "category": "SSDF",
+        "text": "Adhere to Secure Coding Guidelines",
+        "description": "Vulnerabilities in the source code must be minimized by adhering to secure coding guidelines.",
+        "implementationGuide": "Apply and enforce secure coding guidelines (e.g., CERT C/C++).",
+        "weight": 5
+      },
+      {
+        "id": "SSDF-13",
+        "category": "SSDF",
+        "text": "Securely Configure Compiler and Build Environment",
+        "description": "Security at the executable level must be enhanced by applying security settings for compilers, interpreters, and build tools.",
+        "implementationGuide": "Enable security compiler flags (e.g., PIE, RELRO, Stack Canaries).",
+        "weight": 4
+      },
+      {
+        "id": "SSDF-14",
+        "category": "SSDF",
+        "text": "Review and Analyze Code",
+        "description": "Code review and static analysis procedures must be established to identify and manage security vulnerabilities.",
+        "implementationGuide": "Establish mandatory code review and static analysis processes.",
+        "weight": 5
+      },
+      {
+        "id": "SSDF-15",
+        "category": "SSDF",
+        "text": "Test Executable Code",
+        "description": "Test criteria for executable code must be defined, tests must be performed according to the defined procedures, and the results must be managed.",
+        "implementationGuide": "Define and execute test criteria for compiled binaries.",
+        "weight": 4
+      },
+      {
+        "id": "SSDF-16",
+        "category": "SSDF",
+        "text": "Configure Secure Initial Security Settings",
+        "description": "Secure default settings must be defined for software installation and initial configuration, and these must be applied in the actual environment to maintain a secure state during operation.",
+        "implementationGuide": "Define and apply secure default configurations for installation.",
+        "weight": 5
+      },
+      {
+        "id": "SSDF-17",
+        "category": "SSDF",
+        "text": "Identify and Manage Vulnerabilities",
+        "description": "Vulnerability information for the robot system and connected software components must be continuously collected, the impact of identified vulnerabilities must be verified and analyzed, and prompt action must be taken through disclosure and response procedures.",
+        "implementationGuide": "Continuously monitor and respond to discovered vulnerabilities.",
+        "weight": 5
+      },
+      {
+        "id": "SSDF-18",
+        "category": "SSDF",
+        "text": "Take Priority-Based Actions",
+        "description": "The risk of identified vulnerabilities in the robot system must be analyzed, and appropriate actions must be planned and implemented according to the risk level.",
+        "implementationGuide": "Prioritize vulnerability remediation based on risk assessments.",
+        "weight": 4
+      },
+      {
+        "id": "SSDF-19",
+        "category": "SSDF",
+        "text": "Analyze Root Cause of Vulnerabilities",
+        "description": "The root cause of vulnerabilities that have occurred in the robot system must be analyzed, and preventive measures and process improvements must be implemented to prevent the recurrence of the same type of vulnerability.",
+        "implementationGuide": "Perform root cause analysis to prevent recurring vulnerabilities.",
+        "weight": 4
+      }
+    ]
+  },
+  {
+    "id": "cl-sc",
+    "title": "Supply Chain Security",
+    "description": "Checklist for third-party component verification and secure update delivery.",
+    "items": [
+      {
+        "id": "SC-01",
+        "category": "Supply Chain",
+        "text": "Manage Open Source Software Components",
+        "description": "All components, including open-source software and external libraries included in the product, must be identified and managed.",
+        "implementationGuide": "Maintain a comprehensive SBOM for all open-source components.",
+        "weight": 5
+      },
+      {
+        "id": "SC-02",
+        "category": "Supply Chain",
+        "text": "Manage EoS",
+        "description": "Components must not be in an End-of-Support (EoS) state, and EoS must be managed to maintain security patches and technical support from the time of introduction.",
+        "implementationGuide": "Track EoS dates and plan migrations for legacy components.",
+        "weight": 4
+      },
+      {
+        "id": "SC-03",
+        "category": "Supply Chain",
+        "text": "Establish and Apply Vendor Security Capability Assessment Criteria",
+        "description": "The organization must establish and apply security capability assessment criteria to minimize security risks when selecting vendors for supply components.",
+        "implementationGuide": "Evaluate vendor security capabilities before procurement.",
+        "weight": 4
+      },
+      {
+        "id": "SC-04",
+        "category": "Supply Chain",
+        "text": "Prepare for Security Impact Assessment and Response to Supply Chain Changes",
+        "description": "The organization must have a plan to assess and respond to the security impact of changed vendors/components in the event of a supply chain change.",
+        "implementationGuide": "Prepare response plans for vendor or component changes.",
+        "weight": 3
+      },
+      {
+        "id": "SC-05",
+        "category": "Supply Chain",
+        "text": "Manage Component Vulnerabilities",
+        "description": "Known vulnerability information must be identified and managed along with the version, license, and patch status of each component.",
+        "implementationGuide": "Monitor and patch vulnerabilities in all third-party components.",
+        "weight": 5
+      },
+      {
+        "id": "SC-06",
+        "category": "Supply Chain",
+        "text": "Verify Integrity of Robot Firmware and Software Updates",
+        "description": "The organization must establish an integrity verification system to prevent security threats such as malware insertion and unauthorized tampering during the firmware and software update process of the robot system.",
+        "implementationGuide": "Implement strict integrity checks (e.g., signatures) for OTA updates.",
+        "weight": 5
+      },
+      {
+        "id": "SC-07",
+        "category": "Supply Chain",
+        "text": "Implement Rapid Patch Mechanism",
+        "description": "A mechanism for rapid patch distribution and application must be established when vulnerabilities are discovered in supply chain components.",
+        "implementationGuide": "Establish an automated rapid patch deployment mechanism.",
+        "weight": 5
+      }
+    ]
+  },
+  {
+    "id": "cl-ia",
+    "title": "Identification & Authentication",
+    "description": "Checklist for device identification, authentication, and secure credential storage.",
+    "items": [
+      {
+        "id": "IA-01",
+        "category": "Identification & Auth",
+        "text": "User authentication",
+        "description": "The capability to authenticate all users for all user-accessible interfaces shall be provided.",
+        "implementationGuide": "Apply multi-factor authentication for all users and ensure unique identification.",
+        "weight": 5
+      },
+      {
+        "id": "IA-02",
+        "category": "Identification & Auth",
+        "text": "Device authentication",
+        "description": "The capability to identify and authenticate robotic service components shall be provided.",
+        "implementationGuide": "Assign unique identities to all devices and enforce mutual authentication (mTLS).",
+        "weight": 5
+      },
+      {
+        "id": "IA-03",
+        "category": "Identification & Auth",
+        "text": "User password strength",
+        "description": "The capability to enforce user password strength in accordance with internationally recognized user password guidelines shall be provided.",
+        "implementationGuide": "Limit password expiration and restrict reuse of previous passwords.",
+        "weight": 4
+      },
+      {
+        "id": "IA-04",
+        "category": "Identification & Auth",
+        "text": "Public key authentication",
+        "description": "When using a public key infrastructure (PKI), the capability to operate a PKI or obtain public key certificates from an existing PKI shall be provided.",
+        "implementationGuide": "Store private keys securely, preferably in TPM/TEE.",
+        "weight": 5
+      },
+      {
+        "id": "IA-05",
+        "category": "Identification & Auth",
+        "text": "Symmetric key authentication",
+        "description": "When using symmetric keys, the capability for secure key storage and access restriction, mutual trust establishment, and use of secure cryptographic algorithms shall be provided.",
+        "implementationGuide": "Use hardware-backed secure storage for symmetric keys.",
+        "weight": 4
+      },
+      {
+        "id": "IA-06",
+        "category": "Identification & Auth",
+        "text": "Prevention of authenticator feedback",
+        "description": "During the user authentication process, authenticators shall not be exposed on output devices, and feedback on the reason for authentication failure shall not be provided.",
+        "implementationGuide": "Ensure login prompts do not reveal valid usernames or password lengths.",
+        "weight": 3
+      },
+      {
+        "id": "IA-07",
+        "category": "Identification & Auth",
+        "text": "Limitation on consecutive failed login attempts",
+        "description": "In the event of consecutive failed authentication attempts for any user, the login attempts for that user shall be limited.",
+        "implementationGuide": "Implement fail2ban or account lockout policies.",
+        "weight": 4
+      },
+      {
+        "id": "IA-08",
+        "category": "Identification & Auth",
+        "text": "System use notification",
+        "description": "For functions that can have a significant impact on the system, users shall be notified of the associated risks.",
+        "implementationGuide": "Display warning banners (e.g., MOTD) upon SSH or system login.",
+        "weight": 3
+      },
+      {
+        "id": "IA-09",
+        "category": "Identification & Auth",
+        "text": "User account management",
+        "description": "The capability to support all user account management, including adding, modifying, deleting, activating, or deactivating all user accounts, shall be provided.",
+        "implementationGuide": "Implement centralized identity management or strict local user auditing.",
+        "weight": 4
+      },
+      {
+        "id": "IA-10",
+        "category": "Identification & Auth",
+        "text": "User identifier management",
+        "description": "The capability to support user identifier management by user, group, or role shall be provided.",
+        "implementationGuide": "Ensure unique UIDs/GIDs and prevent shared accounts.",
+        "weight": 4
+      },
+      {
+        "id": "IA-11",
+        "category": "Identification & Auth",
+        "text": "User authenticator management",
+        "description": "The user authenticator management function shall provide features for authenticator initialization, default value changes, periodic updates and validation, and protection during storage, use, and transmission.",
+        "implementationGuide": "Use hardware security to protect authenticators.",
+        "weight": 5
+      }
+    ]
+  },
+  {
+    "id": "cl-uc",
+    "title": "Use Control",
+    "description": "Checklist for role-based access control and process isolation.",
+    "items": [
+      {
+        "id": "UC-01",
+        "category": "Use Control",
+        "text": "Authorization for human users",
+        "description": "The capability to enforce the assigned privileges of human users to support separation of duties and least privilege, and to control the use of all interfaces shall be provided.",
+        "implementationGuide": "Implement Role-Based Access Control (RBAC) for human users.",
+        "weight": 4
+      },
+      {
+        "id": "UC-02",
+        "category": "Use Control",
+        "text": "Use control for mobile code",
+        "description": "When using mobile code technologies, the capability to enforce a security policy regarding the use of mobile code technologies shall be provided.",
+        "implementationGuide": "Enforce security policies and integrity checks for mobile code execution.",
+        "weight": 4
+      },
+      {
+        "id": "UC-03",
+        "category": "Use Control",
+        "text": "Session lock",
+        "description": "When providing a user interface locally or over a network, a session lock feature shall be used.",
+        "implementationGuide": "Automatically lock UI/network sessions after inactivity.",
+        "weight": 3
+      },
+      {
+        "id": "UC-04",
+        "category": "Use Control",
+        "text": "Remote session termination",
+        "description": "When supporting remote sessions, the capability to terminate a remote session automatically after a configured period of inactivity, manually by a local administrator, or manually by the user who initiated the session shall be provided.",
+        "implementationGuide": "Allow remote sessions to be terminated manually or via timeout.",
+        "weight": 4
+      },
+      {
+        "id": "UC-05",
+        "category": "Use Control",
+        "text": "Concurrent session control",
+        "description": "The capability to limit the number of concurrent sessions for a specific user per interface shall be provided.",
+        "implementationGuide": "Restrict the maximum number of concurrent sessions per user.",
+        "weight": 3
+      },
+      {
+        "id": "UC-06",
+        "category": "Use Control",
+        "text": "Audit log generation",
+        "description": "The capability to generate security-related audit logs and individual audit logs shall be provided.",
+        "implementationGuide": "Generate detailed audit logs for all security-related events.",
+        "weight": 5
+      },
+      {
+        "id": "UC-07",
+        "category": "Use Control",
+        "text": "Audit log storage capacity",
+        "description": "Sufficient audit log storage capacity shall be allocated for audit log management, and a feature to prepare for component failure when the audit storage capacity is approached or exceeded shall be provided.",
+        "implementationGuide": "Allocate sufficient storage and configure alerts for log capacity limits.",
+        "weight": 4
+      },
+      {
+        "id": "UC-08",
+        "category": "Use Control",
+        "text": "Response to audit processing failures",
+        "description": "The capability to prevent the loss of essential services and functions in case of audit processing failure and to support appropriate actions in response to audit processing failures in accordance with generally accepted industry practices and recommendations shall be provided.",
+        "implementationGuide": "Define fail-safe behaviors in the event of audit logging failure.",
+        "weight": 3
+      },
+      {
+        "id": "UC-09",
+        "category": "Use Control",
+        "text": "Timestamps",
+        "description": "Timestamps used for audit log generation shall be provided.",
+        "implementationGuide": "Use synchronized NTP timestamps for all audit logs.",
+        "weight": 5
+      },
+      {
+        "id": "UC-10",
+        "category": "Use Control",
+        "text": "Non-repudiation for human users",
+        "description": "When providing a human user interface, the capability to determine whether a specific human user has taken a specific action shall be provided.",
+        "implementationGuide": "Implement non-repudiation mechanisms (e.g., digital signatures) for user actions.",
+        "weight": 4
+      },
+      {
+        "id": "UC-11",
+        "category": "Use Control",
+        "text": "Protection of physical diagnostic and test interfaces",
+        "description": "Protection against unauthorized use of physical diagnostic and test interfaces shall be provided.",
+        "implementationGuide": "Disable or actively monitor physical diagnostic ports (e.g., JTAG, UART).",
+        "weight": 4
+      }
+    ]
+  },
+  {
+    "id": "cl-si",
+    "title": "System Integrity",
+    "description": "Checklist for hardware root of trust, anti-rollback, and runtime integrity.",
+    "items": [
+      {
+        "id": "SI-01",
+        "category": "System Integrity",
+        "text": "Communication integrity",
+        "description": "The capability to protect the integrity and authenticity of transmitted information shall be provided.",
+        "implementationGuide": "Apply cryptographic protection (e.g., TLS) to all communications.",
+        "weight": 5
+      },
+      {
+        "id": "SI-02",
+        "category": "System Integrity",
+        "text": "Malware protection mechanism",
+        "description": "A protection mechanism to prevent, detect, report, and mitigate the effects of malware or unauthorized software shall be provided. Additionally, the capability to update the protection mechanism shall be provided.",
+        "implementationGuide": "Deploy and automatically update malware protection mechanisms (e.g., IDS/IPS).",
+        "weight": 5
+      },
+      {
+        "id": "SI-03",
+        "category": "System Integrity",
+        "text": "Security function verification",
+        "description": "The capability to support the verification of the intended operation of security functions shall be provided. If an anomaly such as a compromised integrity is detected, it shall stop operation or switch to a safe mode, and automatically report the breach to the administrator or cloud with a log record.",
+        "implementationGuide": "Verify security functions and switch to safe mode upon integrity breach.",
+        "weight": 5
+      },
+      {
+        "id": "SI-04",
+        "category": "System Integrity",
+        "text": "Integrity of software, data, and equipment",
+        "description": "The integrity of software, data, and equipment stored inside the robot shall be stored in a protected storage that can guarantee integrity and be applied with hash functions, digital signatures, etc. Also, the capability to check the status at boot and at regular intervals to detect, record, and report unauthorized changes shall be provided.",
+        "implementationGuide": "Use Secure Boot and continuous runtime integrity checks (e.g., IMA).",
+        "weight": 5
+      },
+      {
+        "id": "SI-05",
+        "category": "System Integrity",
+        "text": "Input validation",
+        "description": "The validity of input values used as control inputs or that directly affect the operation of the robot service shall be verified.",
+        "implementationGuide": "Sanitize and validate all external inputs affecting robot control.",
+        "weight": 4
+      },
+      {
+        "id": "SI-06",
+        "category": "System Integrity",
+        "text": "Deterministic output",
+        "description": "In the event of an inability to maintain normal operation due to an attack or other factors, the capability to set the output to a predetermined state shall be provided.",
+        "implementationGuide": "Ensure the robot fails safely to a predetermined state during attacks.",
+        "weight": 4
+      },
+      {
+        "id": "SI-07",
+        "category": "System Integrity",
+        "text": "Error handling",
+        "description": "Error conditions shall be identified and handled in a way that does not provide information that could be exploited by an attacker.",
+        "implementationGuide": "Handle errors gracefully without leaking sensitive system information.",
+        "weight": 3
+      },
+      {
+        "id": "SI-08",
+        "category": "System Integrity",
+        "text": "Session integrity protection",
+        "description": "The capability to protect communication session integrity, such as secure generation and verification of unique session IDs, rejection of invalid session IDs, and invalidation of session IDs upon session termination, shall be provided.",
+        "implementationGuide": "Use secure, unpredictable session IDs and invalidate them properly.",
+        "weight": 4
+      },
+      {
+        "id": "SI-09",
+        "category": "System Integrity",
+        "text": "Protection of audit-related information",
+        "description": "Audit information, audit logs, and audit tools shall be protected from unauthorized access, modification, and deletion.",
+        "implementationGuide": "Store audit logs on immutable or append-only media to prevent tampering.",
+        "weight": 5
+      },
+      {
+        "id": "SI-10",
+        "category": "System Integrity",
+        "text": "Update support verification",
+        "description": "The capability to support update and upgrade functions shall be provided.",
+        "implementationGuide": "Authenticate and verify the integrity of all software updates before applying.",
+        "weight": 5
+      },
+      {
+        "id": "SI-11",
+        "category": "System Integrity",
+        "text": "Physical tamper resistance and detection",
+        "description": "Tamper-resistant and detection mechanisms shall be provided to prevent unauthorized physical access to the device.",
+        "implementationGuide": "Install physical tamper-detection sensors on the robot chassis.",
+        "weight": 4
+      }
+    ]
+  },
+  {
+    "id": "cl-dp",
+    "title": "Data Protection",
+    "description": "Checklist for data encryption and privacy preservation.",
+    "items": [
+      {
+        "id": "DP-01",
+        "category": "Data Protection",
+        "text": "Confidentiality of information",
+        "description": "The capability to protect the confidentiality of information stored in storage and transmitted over communication channels to prevent unauthorized disclosure shall be provided.",
+        "implementationGuide": "Apply Full Disk Encryption (LUKS) and TLS 1.3/mTLS for all communications.",
+        "weight": 5
+      },
+      {
+        "id": "DP-02",
+        "category": "Data Protection",
+        "text": "Data deletion management",
+        "description": "When an active service is decommissioned or disposed of, the capability to delete information stored in all non-volatile information storage that supports clear read access shall be provided.",
+        "implementationGuide": "Implement secure wipe/zeroization features for storage devices.",
+        "weight": 4
+      },
+      {
+        "id": "DP-03",
+        "category": "Data Protection",
+        "text": "Use of secure cryptographic mechanisms",
+        "description": "When encryption is required, internationally recognized secure cryptographic mechanisms shall be used.",
+        "implementationGuide": "Use standard algorithms like AES-256, RSA-2048+, ECC, or SHA-256.",
+        "weight": 5
+      },
+      {
+        "id": "DP-04",
+        "category": "Data Protection",
+        "text": "Personal data protection",
+        "description": "Legal requirements related to personal data shall be complied with when collecting and processing personal data.",
+        "implementationGuide": "Apply edge-side de-identification (e.g., face blurring) before data transmission.",
+        "weight": 4
+      }
+    ]
+  },
+  {
+    "id": "cl-dfr",
+    "title": "Data Flow Restriction",
+    "description": "Checklist for network segmentation, port lockdown, and inter-board communication.",
+    "items": [
+      {
+        "id": "DFR-01",
+        "category": "Data Flow Restriction",
+        "text": "Network function support",
+        "description": "The capability for operators to directly manage and configure network settings for the segmentation of zones and communication paths shall be provided.",
+        "implementationGuide": "Implement network segmentation (VLANs) and restrict communication paths.",
+        "weight": 4
+      },
+      {
+        "id": "DFR-02",
+        "category": "Data Flow Restriction",
+        "text": "Protocol filtering",
+        "description": "The capability to allow only authorized protocols and restrict the use of unauthorized protocols shall be provided.",
+        "implementationGuide": "Use firewalls to filter unauthorized protocols and ports.",
+        "weight": 5
+      }
+    ]
+  },
+  {
+    "id": "cl-er",
+    "title": "Event Response",
+    "description": "Checklist for security event logging, alerting, and log integrity.",
+    "items": [
+      {
+        "id": "ER-01",
+        "category": "Event Response",
+        "text": "Audit log accessibility",
+        "description": "The capability for authorized personnel and/or tools to access audit logs in a read-only manner shall be provided.",
+        "implementationGuide": "Set logs to append-only and provide programmatic access (API) to audit logs.",
+        "weight": 4
+      },
+      {
+        "id": "ER-02",
+        "category": "Event Response",
+        "text": "Continuous monitoring",
+        "description": "The capability for continuous monitoring to detect and report security violations in a timely manner shall be provided.",
+        "implementationGuide": "Deploy an IDS/IPS and continuously forward logs to a centralized SIEM.",
+        "weight": 5
+      },
+      {
+        "id": "ER-03",
+        "category": "Event Response",
+        "text": "Security event notification",
+        "description": "The capability to send notifications to administrators through various channels when critical security events occur shall be provided.",
+        "implementationGuide": "Configure alerting via Email, SMS, or Slack for critical violations.",
+        "weight": 4
+      }
+    ]
+  },
+  {
+    "id": "cl-ra",
+    "title": "Resource Availability",
+    "description": "Checklist for protection against Denial of Service (DoS) attacks.",
+    "items": [
+      {
+        "id": "RA-01",
+        "category": "Resource Availability",
+        "text": "Protection Against DoS Attacks",
+        "description": "Connection limits, queue settings, process resource limits, etc., shall be applied to prevent the robot system from being paralyzed by attacks such as a large number of connection attempts from the outside, excessive command requests, or large data transmissions.",
+        "implementationGuide": "Implement rate limiting and connection limits to mitigate DoS attacks.",
+        "weight": 4
+      },
+      {
+        "id": "RA-02",
+        "category": "Resource Availability",
+        "text": "Resource management",
+        "description": "The capability to limit the resource usage of security functions to prevent resource exhaustion shall be provided.",
+        "implementationGuide": "Restrict resource usage (e.g., via cgroups) for security functions.",
+        "weight": 4
+      },
+      {
+        "id": "RA-03",
+        "category": "Resource Availability",
+        "text": "Resource status diagnosis",
+        "description": "The usage and status of CPU, memory, storage, communication channels, etc., shall be verifiable.",
+        "implementationGuide": "Continuously monitor CPU, memory, and storage utilization.",
+        "weight": 3
+      },
+      {
+        "id": "RA-04",
+        "category": "Resource Availability",
+        "text": "Inventory function support",
+        "description": "The capability to report the current list of installed components and the attribute information of each component shall be provided.",
+        "implementationGuide": "Maintain an up-to-date inventory of all installed system components.",
+        "weight": 3
+      },
+      {
+        "id": "RA-05",
+        "category": "Resource Availability",
+        "text": "System backup",
+        "description": "A backup function shall be supported to protect the device state, and the backup process shall not affect normal robot service operation.",
+        "implementationGuide": "Perform regular system backups without impacting normal operations.",
+        "weight": 4
+      },
+      {
+        "id": "RA-06",
+        "category": "Resource Availability",
+        "text": "Component recovery and reconstitution",
+        "description": "The capability to recover and reconstitute to a known secure state after an interruption or failure shall be provided.",
+        "implementationGuide": "Implement recovery procedures to restore the system to a secure state.",
+        "weight": 5
+      },
+      {
+        "id": "RA-07",
+        "category": "Resource Availability",
+        "text": "Network and security configuration settings",
+        "description": "The capability to configure according to the recommended network and security configurations described in the supplier's provided instructions shall be provided, and an interface for the currently applied network and security configuration settings shall be provided.",
+        "implementationGuide": "Apply recommended security configurations and provide configuration reports.",
+        "weight": 4
+      },
+      {
+        "id": "RA-08",
+        "category": "Resource Availability",
+        "text": "Restriction of unneeded functionality, ports, and services",
+        "description": "The capability to disable or restrict the use of unnecessary functions, ports, protocols, and services shall be provided.",
+        "implementationGuide": "Disable all unnecessary network services, ports, and protocols.",
+        "weight": 5
+      }
+    ]
+  },
+  {
+    "id": "cl-cr",
+    "title": "Cyber Resilience",
+    "description": "Checklist for fail-safe mechanisms and self-destruction logic.",
+    "items": [
+      {
+        "id": "CR-01",
+        "category": "Cyber Resilience",
+        "text": "Regular Backup and Management of Critical Configuration Data",
+        "description": "Critical settings and data of the robot system must be periodically backed up and managed.",
+        "implementationGuide": "Periodically backup critical configuration data to a secure location.",
+        "weight": 5
+      },
+      {
+        "id": "CR-02",
+        "category": "Cyber Resilience",
+        "text": "Backup Data Integrity and Recovery Verification Procedures",
+        "description": "The recovery procedures for robot operation must be documented, and checks and verifications must be performed to ensure their effectiveness.",
+        "implementationGuide": "Verify the integrity of backups and regularly test recovery procedures.",
+        "weight": 4
+      },
+      {
+        "id": "CR-03",
+        "category": "Cyber Resilience",
+        "text": "Documentation and Testing of Recovery Procedures for Cyber Incidents",
+        "description": "Robot operation recovery procedures must be documented in preparation for cyber incidents, and mock tests must be conducted regularly.",
+        "implementationGuide": "Conduct regular mock tests for cyber incident recovery.",
+        "weight": 4
+      },
+      {
+        "id": "CR-04",
+        "category": "Cyber Resilience",
+        "text": "Definition of Recovery Time Objective (RTO) and Recovery Point Objective (RPO)",
+        "description": "The Recovery Time Objective (RTO) and Recovery Point Objective (RPO) must be clearly defined for robot system failures to enable rapid recovery.",
+        "implementationGuide": "Define and document strict RTO and RPO metrics for the system.",
+        "weight": 4
+      },
+      {
+        "id": "CR-05",
+        "category": "Cyber Resilience",
+        "text": "Timely Provision and Application of Security Updates and Patches",
+        "description": "Security updates and patches for robot software and firmware must be provided for prompt application.",
+        "implementationGuide": "Deploy security patches promptly across the robot fleet.",
+        "weight": 5
+      },
+      {
+        "id": "CR-06",
+        "category": "Cyber Resilience",
+        "text": "Rollback or Recovery Function in Case of Update Failure",
+        "description": "It must be possible to roll back to a previous stable version or recover if a security update for the robot system fails.",
+        "implementationGuide": "Implement an automated rollback mechanism for failed firmware updates.",
+        "weight": 5
+      },
+      {
+        "id": "CR-07",
+        "category": "Cyber Resilience",
+        "text": "Specification of Security Update Support Policy and Lifecycle",
+        "description": "A clear security update provision policy must be established and operated for the support life of the robot.",
+        "implementationGuide": "Define the lifecycle and security update support policy for the robot.",
+        "weight": 3
+      },
+      {
+        "id": "CR-08",
+        "category": "Cyber Resilience",
+        "text": "Establishment of Official Procedures for Reporting and Handling Security Vulnerabilities",
+        "description": "There must be an official procedure for receiving and promptly handling security vulnerability reports from external sources.",
+        "implementationGuide": "Establish a vulnerability disclosure program (VDP) for external reports.",
+        "weight": 4
+      },
+      {
+        "id": "CR-09",
+        "category": "Cyber Resilience",
+        "text": "Securing Sufficient Logs and Supporting Security Event Analysis",
+        "description": "Sufficient logs must be secured and managed to support cause analysis and recovery when a security event occurs in the robot system.",
+        "implementationGuide": "Secure sufficient audit logs to enable post-incident forensic analysis.",
+        "weight": 5
+      },
+      {
+        "id": "CR-10",
+        "category": "Cyber Resilience",
+        "text": "Procedure for Improving Security Measures Based on Incidents/Vulnerabilities",
+        "description": "Security measures must be periodically reviewed and continuously improved based on incident and vulnerability information.",
+        "implementationGuide": "Continuously improve security policies based on incident post-mortems.",
+        "weight": 4
+      },
+      {
+        "id": "CR-11",
+        "category": "Cyber Resilience",
+        "text": "Service Continuity and Maintenance of Essential Functions",
+        "description": "The robot system must be designed so that essential safety and operational functions are maintained even in partial system failures or DoS attack situations.",
+        "implementationGuide": "Design the system to maintain critical safety functions during DoS attacks.",
+        "weight": 5
+      },
+      {
+        "id": "CR-12",
+        "category": "Cyber Resilience",
+        "text": "Implementation of Safe Stop and Mode Transition in Abnormal States",
+        "description": "The robot system must be able to automatically perform a safe stop or switch to a safe mode in abnormal states such as communication loss or sensor errors.",
+        "implementationGuide": "Trigger an automatic Safe Stop (E-Stop) upon detecting abnormal states.",
+        "weight": 5
+      },
+      {
+        "id": "CR-13",
+        "category": "Cyber Resilience",
+        "text": "Protection of Authentication Data such as User Information",
+        "description": "Personal data used in the robot system's authentication, identity, and access systems should only be stored, transmitted, or otherwise processed if relevant to the product and must be protected from unauthorized access and confidentiality breaches.",
+        "implementationGuide": "Protect authentication data (e.g., credentials) from unauthorized access.",
+        "weight": 4
+      }
+    ]
+  },
+  {
+    "id": "cl-ws",
+    "title": "Wireless Security",
+    "description": "Checklist for securing wireless communications and interfaces.",
+    "items": [
+      {
+        "id": "WS-01",
+        "category": "Wireless Security",
+        "text": "Wireless User Identification and Authentication",
+        "description": "Authentication and access management must be performed for users and terminal levels accessing the robot system's wireless interface, as well as for all user levels, using an appropriate authentication mechanism.",
+        "implementationGuide": "Enforce strong authentication for all wireless interface access.",
+        "weight": 4
+      },
+      {
+        "id": "WS-02",
+        "category": "Wireless Security",
+        "text": "Authenticator Validity Verification",
+        "description": "The authentication mechanism must verify the relevant properties of all authentication means used, based on information available in the operating environment.",
+        "implementationGuide": "Verify the validity and properties of authenticators in the operating environment.",
+        "weight": 4
+      },
+      {
+        "id": "WS-03",
+        "category": "Wireless Security",
+        "text": "Authenticator Change",
+        "description": "The authentication mechanism must allow users to change the authentication means they use (e.g., passwords, tokens), as long as it does not conflict with security objectives.",
+        "implementationGuide": "Allow users to securely change their wireless authenticators (e.g., passwords).",
+        "weight": 3
+      },
+      {
+        "id": "WS-04",
+        "category": "Wireless Security",
+        "text": "Password Strength",
+        "description": "All set passwords must be sufficiently secure and unique. Default passwords must be forced to be changed by the user or managed securely. All passwords must be set in compliance with the strength requirements of international standards such as NIST SP 800-63B.",
+        "implementationGuide": "Enforce strong, unique passwords compliant with NIST SP 800-63B standards.",
+        "weight": 5
+      },
+      {
+        "id": "WS-05",
+        "category": "Wireless Security",
+        "text": "Brute-force Protection",
+        "description": "The authentication mechanism must be designed to withstand brute-force attacks. That is, appropriate defense measures must be applied to prevent an attacker from discovering a password through repeated authentication attempts or causing a Denial of Service (DoS) state.",
+        "implementationGuide": "Implement account lockout or fail2ban to prevent brute-force attacks.",
+        "weight": 5
+      },
+      {
+        "id": "WS-06",
+        "category": "Wireless Security",
+        "text": "Asset Access Control",
+        "description": "Access to the basic information or assets of all users participating in wireless communication must be controlled so that only authorized users can access them.",
+        "implementationGuide": "Apply strict access control to assets exposed over wireless networks.",
+        "weight": 4
+      },
+      {
+        "id": "WS-07",
+        "category": "Wireless Security",
+        "text": "Secure Data Protection",
+        "description": "A secure storage mechanism must be provided to safely store and manage sensitive information and personal data within the network, as well as data at risk of forgery or alteration.",
+        "implementationGuide": "Use secure storage mechanisms for sensitive data transmitted wirelessly.",
+        "weight": 5
+      },
+      {
+        "id": "WS-08",
+        "category": "Wireless Security",
+        "text": "Stored Data Integrity Verification",
+        "description": "The equipment must provide a function to protect the integrity of stored security assets and personal information assets to prevent and detect data tampering.",
+        "implementationGuide": "Provide integrity verification to detect tampering of stored wireless data.",
+        "weight": 4
+      },
+      {
+        "id": "WS-09",
+        "category": "Wireless Security",
+        "text": "Wireless Communication Data Protection",
+        "description": "The confidentiality of data transmitted and received over the wireless network must be protected by applying security measures such as encryption to prevent external exposure, leakage, or eavesdropping.",
+        "implementationGuide": "Encrypt all wireless communications (e.g., WPA3, TLS) to prevent eavesdropping.",
+        "weight": 5
+      },
+      {
+        "id": "WS-10",
+        "category": "Wireless Security",
+        "text": "Wireless Communication Data Integrity Verification",
+        "description": "An integrity verification mechanism, such as hash value verification or digital signature, must be applied to ensure that data transmitted over the wireless network has not been altered during transmission.",
+        "implementationGuide": "Apply digital signatures or HMACs to ensure wireless data integrity.",
+        "weight": 5
+      },
+      {
+        "id": "WS-11",
+        "category": "Wireless Security",
+        "text": "Wireless Communication Replay Attack Prevention",
+        "description": "Data transmitted over the wireless network must be protected from being exploited in replay attacks.",
+        "implementationGuide": "Implement replay protection (e.g., nonces, timestamps) for wireless packets.",
+        "weight": 4
+      },
+      {
+        "id": "WS-12",
+        "category": "Wireless Security",
+        "text": "Update Mechanism Provision",
+        "description": "An update function must be provided for software that affects security and privacy assets. Especially when connected to the internet, updates should be possible in various ways, such as automatically or based on approval.",
+        "implementationGuide": "Support secure over-the-air (OTA) updates for wireless components.",
+        "weight": 5
+      },
+      {
+        "id": "WS-13",
+        "category": "Wireless Security",
+        "text": "Wireless Network Update Integrity and Authenticity Verification",
+        "description": "The integrity of software and firmware updated automatically or manually during a remote update via a wireless network must be verified.",
+        "implementationGuide": "Verify the authenticity of software updates received over wireless networks.",
+        "weight": 5
+      },
+      {
+        "id": "WS-14",
+        "category": "Wireless Security",
+        "text": "Cryptographic Adequacy",
+        "description": "The cryptographic technology used to protect security assets or network assets must follow the latest security best practices. In addition, the purpose and expected lifespan of each cryptographic use must be clearly documented for systematic cryptographic policy management.",
+        "implementationGuide": "Document cryptographic policies and use industry-standard algorithms.",
+        "weight": 4
+      },
+      {
+        "id": "WS-15",
+        "category": "Wireless Security",
+        "text": "Appropriate Cryptographic Key Usage",
+        "description": "All confidential cryptographic keys used must have a security strength of at least 112 bits, and the latest security best practices must be followed when generating cryptographic keys.",
+        "implementationGuide": "Ensure all cryptographic keys meet a minimum security strength of 112 bits.",
+        "weight": 5
+      },
+      {
+        "id": "WS-16",
+        "category": "Wireless Security",
+        "text": "Cryptographic Key Uniqueness",
+        "description": "Pre-installed confidential cryptographic keys must be managed to be practically unique per device. However, if a shared key is required for initial trust establishment or to perform a specific function, the purpose and security measures must be clearly documented.",
+        "implementationGuide": "Use unique cryptographic keys per device and document any shared keys.",
+        "weight": 4
+      },
+      {
+        "id": "WS-17",
+        "category": "Wireless Security",
+        "text": "Log Generation",
+        "description": "Logs must be recorded for internal security activities and events related to major assets.",
+        "implementationGuide": "Generate audit logs for all security events on the wireless interface.",
+        "weight": 4
+      },
+      {
+        "id": "WS-18",
+        "category": "Wireless Security",
+        "text": "Inclusion of Time Information",
+        "description": "All log data stored in the equipment's permanent storage must include time-related information such as a timestamp.",
+        "implementationGuide": "Include accurate timestamps in all wireless security logs.",
+        "weight": 4
+      },
+      {
+        "id": "WS-19",
+        "category": "Wireless Security",
+        "text": "Maintenance of Up-to-date Software and Hardware",
+        "description": "The product or system must maintain its software and hardware in an up-to-date state to ensure that there are no publicly known exploitable vulnerabilities. Updates and patches must be applied regularly. Components with known vulnerabilities must be addressed immediately, and patch priority should be set according to the risk level.",
+        "implementationGuide": "Regularly apply patches to wireless software and hardware components.",
+        "weight": 5
+      },
+      {
+        "id": "WS-20",
+        "category": "Wireless Security",
+        "text": "Minimization of Network Interface Exposure",
+        "description": "The product or system must minimize the services exposed through the network interface. The interface configuration related to optional services in use must be clearly set, and the exposed list must be documented and managed.",
+        "implementationGuide": "Minimize exposed wireless services and document all open interfaces.",
+        "weight": 4
+      },
+      {
+        "id": "WS-21",
+        "category": "Wireless Security",
+        "text": "Restriction of External Physical Interfaces",
+        "description": "Unnecessary external physical interfaces in the product or system must be removed.",
+        "implementationGuide": "Disable or remove unnecessary physical interfaces related to wireless modules.",
+        "weight": 4
+      },
+      {
+        "id": "WS-22",
+        "category": "Wireless Security",
+        "text": "External Input Management",
+        "description": "The system must perform appropriate validation on external inputs and be designed to protect the system from them. If external detection sensors or detection functions are included, their operating principles, range, and linkage methods must be clearly documented to provide sufficient information.",
+        "implementationGuide": "Validate all external inputs received via wireless sensors or interfaces.",
+        "weight": 5
+      },
+      {
+        "id": "WS-23",
+        "category": "Wireless Security",
+        "text": "Equipment Integrity Assurance",
+        "description": "The equipment must be designed to maintain its integrity from physical damage, unauthorized changes, component replacement, etc.",
+        "implementationGuide": "Protect wireless equipment from physical damage and unauthorized component replacement.",
+        "weight": 4
+      }
+    ]
+  }
+]

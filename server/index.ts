@@ -50,20 +50,42 @@ async function query(text: string, params: any[] = []) {
 async function loadSeedData() {
   let targets: any[] = [];
   let checklists: any[] = [];
+  const dataDir = path.join(process.cwd(), 'server', 'data');
 
   try {
-    const targetsData = await fs.readFile(path.join(process.cwd(), 'server', 'data', 'data.json'), 'utf-8');
+    const targetsData = await fs.readFile(path.join(dataDir, 'data.json'), 'utf-8');
     const parsedTargets = JSON.parse(targetsData);
     targets = parsedTargets.targets || [];
   } catch (err) {
     console.error('Failed to load data.json for targets');
   }
 
+  const checklistsDir = path.join(dataDir, 'checklists');
   try {
-    const checklistsData = await fs.readFile(path.join(process.cwd(), 'server', 'data', 'humanoid-sec-checklists.json'), 'utf-8');
-    checklists = JSON.parse(checklistsData);
+    const files = await fs.readdir(checklistsDir);
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        try {
+          const fileData = await fs.readFile(path.join(checklistsDir, file), 'utf-8');
+          const parsedData = JSON.parse(fileData);
+          const parsedArray = Array.isArray(parsedData) ? parsedData : [parsedData];
+          
+          // 파일 구조 검증: id와 items 배열을 포함한 객체인지 확인
+          const validChecklists = parsedArray.filter((item: any) => item.id && item.items);
+          
+          if (validChecklists.length > 0) {
+            checklists = checklists.concat(validChecklists);
+            console.log(`Loaded ${validChecklists.length} checklists from ${file}`);
+          } else {
+            console.warn(`Ignored ${file}: No valid checklist structure found (missing 'id' or 'items').`);
+          }
+        } catch (err) {
+          console.error(`Failed to parse or load checklist file ${file}:`, err);
+        }
+      }
+    }
   } catch (err) {
-    console.error('Failed to load humanoid-sec-checklists.json for checklists');
+    console.error('Failed to read checklists directory:', err);
   }
 
   return { targets, checklists };
@@ -221,13 +243,13 @@ async function initDb() {
 
   if (count === 0 || clCount === 0) {
     console.log('Initializing database with seed data...');
-    await seedDatabase();
+    await seedDatabase(INITIAL_DATA);
   }
 }
 
 // Refactoring: Seed logic completely decoupled into a reusable function
-async function seedDatabase() {
-  const INITIAL_DATA = await loadSeedData();
+async function seedDatabase(initialData?: any) {
+  const INITIAL_DATA = initialData || await loadSeedData();
 
   // Clear existing data
   await query('DELETE FROM checklist_results');
@@ -491,9 +513,9 @@ async function startServer() {
   // Initialize Database
   try {
     await initDb();
-    console.log('PostgreSQL initialized successfully');
+    console.log(`${DB_TYPE === 'postgres' ? 'PostgreSQL' : 'SQLite'} initialized successfully`);
   } catch (err) {
-    console.error('Failed to initialize PostgreSQL:', err);
+    console.error(`Failed to initialize ${DB_TYPE === 'postgres' ? 'PostgreSQL' : 'SQLite'}:`, err);
     // Don't exit, let the server start but APIs will fail
   }
 
